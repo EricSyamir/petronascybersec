@@ -16,8 +16,8 @@ vendor/
 .DS_Store
 Thumbs.db
 
-# Uploads (keep structure but ignore files)
-uploads/**/*
+# Uploads (ignore all uploaded files)
+uploads/
 !uploads/.gitkeep
 
 # Temporary files
