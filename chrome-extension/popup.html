@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PETRONAS Cybercrime Reporter</title>
+    <link rel="stylesheet" href="popup.css">
+    <link rel="stylesheet" href="enhanced-popup.css">
+</head>
+<body>
+    <div class="extension-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-text">
+                <h1>PETRONAS</h1>
+                <p>Cybercrime Reporter</p>
+            </div>
+            <div class="language-toggle">
+                <button id="langToggle" class="lang-btn">BM</button>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+
+        <!-- Main Actions -->
+        <div class="actions-section">
+            <button id="scanPageBtn" class="action-btn primary">
+                <span class="icon">🔍</span>
+                <div class="btn-text">
+                    <span class="title" data-en="Scan This Page" data-bm="Imbas Halaman Ini">Scan This Page</span>
+                    <span class="subtitle" data-en="Check for suspicious content" data-bm="Periksa kandungan mencurigakan">Check for suspicious content</span>
+                </div>
+            </button>
+
+            <button id="reportIncidentBtn" class="action-btn secondary">
+                <span class="icon">📝</span>
+                <div class="btn-text">
+                    <span class="title" data-en="Report Incident" data-bm="Lapor Insiden">Report Incident</span>
+                    <span class="subtitle" data-en="Submit cybercrime report" data-bm="Hantar laporan jenayah siber">Submit cybercrime report</span>
+                </div>
+            </button>
+
+            <button id="scanImageBtn" class="action-btn tertiary">
+                <span class="icon">🖼️</span>
+                <div class="btn-text">
+                    <span class="title" data-en="AI Image Analyzer" data-bm="Penganalisis Imej AI">AI Image Analyzer</span>
+                    <span class="subtitle" data-en="Drag & drop or browse images" data-bm="Seret & lepas atau layari imej">Drag & drop or browse images</span>
+                </div>
+            </button>
+        </div>
+
+        <!-- Recent Alerts -->
+        <div class="alerts-section">
+            <h3 data-en="Latest Malaysian Cyber Alerts" data-bm="Amaran Siber Malaysia Terkini">Latest Malaysian Cyber Alerts</h3>
+            <div id="alertsList" class="alerts-list">
+                <div class="loading">Loading alerts...</div>
+            </div>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="links-section">
+            <h3 data-en="Quick Access" data-bm="Akses Pantas">Quick Access</h3>
+            <div class="links-grid">
+                <a href="#" id="dashboardLink" class="quick-link" onclick="return false;">
+                    <span class="icon">📊</span>
+                    <span data-en="Dashboard" data-bm="Papan Pemuka">Dashboard</span>
+                </a>
+                <a href="#" id="osintLink" class="quick-link" onclick="return false;">
+                    <span class="icon">🎯</span>
+                    <span data-en="OSINT Monitor" data-bm="Monitor OSINT">OSINT Monitor</span>
+                </a>
+                <a href="https://cyber999.gov.my" target="_blank" class="quick-link">
+                    <span class="icon">🚨</span>
+                    <span>Cyber999</span>
+                </a>
+                <a href="https://semakmule.rmp.gov.my" target="_blank" class="quick-link">
+                    <span class="icon">👮</span>
+                    <span>PDRM</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Settings -->
+        <div class="settings-section">
+            <button id="settingsBtn" class="settings-btn">
+                <span class="icon">⚙️</span>
+                <span data-en="Settings" data-bm="Tetapan">Settings</span>
+            </button>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <span id="statusText" data-en="Ready" data-bm="Sedia">Ready</span>
+            <span id="connectionStatus" class="status-indicator online"></span>
+        </div>
+    </div>
+
+    <!-- Scanning Modal -->
+    <div id="scanModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 data-en="Scanning Content" data-bm="Mengimbas Kandungan">Scanning Content</h3>
+                <button id="closeModal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="scan-progress">
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill"></div>
+                    </div>
+                    <p id="scanStatus" data-en="Analyzing content..." data-bm="Menganalisis kandungan...">Analyzing content...</p>
+                </div>
+                <div id="scanResults" class="scan-results hidden">
+                    <!-- Results will be populated here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="reportBtn" class="btn primary hidden" data-en="Report This" data-bm="Lapor Ini">Report This</button>
+                <button id="closeBtn" class="btn secondary" data-en="Close" data-bm="Tutup">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Analyzer Modal -->
+    <div id="imageAnalyzerModal" class="modal hidden">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h3 data-en="AI Image Analyzer" data-bm="Penganalisis Imej AI">AI Image Analyzer</h3>
+                <button id="closeImageModal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="imageDropContainer">
+                    <!-- Image drop analyzer will be initialized here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="closeImageBtn" class="btn secondary" data-en="Close" data-bm="Tutup">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="llm-analyzer.js"></script>
+    <script src="image-drop-analyzer.js"></script>
+    <script src="popup.js"></script>
+</body>
+</html>

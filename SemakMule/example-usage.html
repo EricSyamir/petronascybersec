@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SemakMule API - JavaScript Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #0066cc;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #0066cc;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0052a3;
+        }
+        button.secondary {
+            background-color: #666;
+        }
+        button.secondary:hover {
+            background-color: #555;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-left: 4px solid #0066cc;
+            border-radius: 4px;
+            display: none;
+        }
+        .result.show {
+            display: block;
+        }
+        .error {
+            border-left-color: #cc0000;
+            background-color: #ffe6e6;
+        }
+        .success {
+            border-left-color: #00cc00;
+            background-color: #e6ffe6;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #0066cc;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 SemakMule API - Scammer Database Check (JavaScript)</h1>
+        
+        <form id="checkForm">
+            <div class="form-group">
+                <label for="account">Bank Account Number:</label>
+                <input type="text" id="account" name="account" placeholder="Enter bank account number">
+            </div>
+            
+            <div class="form-group">
+                <label for="phone">Phone Number:</label>
+                <input type="text" id="phone" name="phone" placeholder="Enter phone number (e.g., 0123456789)">
+            </div>
+            
+            <div class="form-group">
+                <label for="company">Company Name:</label>
+                <input type="text" id="company" name="company" placeholder="Enter company name">
+            </div>
+            
+            <button type="button" onclick="checkDatabase()">Check Database</button>
+            <button type="button" onclick="getStats()" class="secondary">Get Statistics</button>
+        </form>
+        
+        <div id="result" class="result"></div>
+        
+        <hr style="margin: 30px 0;">
+        
+        <h2>API Endpoints</h2>
+        <ul>
+            <li><strong>Main API:</strong> https://mule.the-oaks.my/api/p/</li>
+            <li><strong>Mule API:</strong> https://semakmule.rmp.gov.my/api/mule/</li>
+        </ul>
+        
+        <h2>Available Methods</h2>
+        <ul>
+            <li><code>checkBankAccount(accountNumber)</code> - Check if a bank account is in the scammer database</li>
+            <li><code>checkPhoneNumber(phoneNumber)</code> - Check if a phone number is in the scammer database</li>
+            <li><code>checkCompany(companyName)</code> - Check if a company name is in the scammer database</li>
+            <li><code>getStats()</code> - Get database statistics</li>
+            <li><code>search(searchParams)</code> - Perform a custom search</li>
+        </ul>
+    </div>
+
+    <script src="api-client.js"></script>
+    <script>
+        const client = new SemakMuleAPIClient();
+        const resultDiv = document.getElementById('result');
+        
+        function showResult(message, isSuccess = true) {
+            resultDiv.className = 'result show ' + (isSuccess ? 'success' : 'error');
+            resultDiv.innerHTML = message;
+        }
+        
+        function showLoading() {
+            resultDiv.className = 'result show';
+            resultDiv.innerHTML = '<p>Loading... <span class="loading"></span></p>';
+        }
+        
+        async function checkDatabase() {
+            const account = document.getElementById('account').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            const company = document.getElementById('company').value.trim();
+            
+            if (!account && !phone && !company) {
+                showResult('<p>Please enter at least one field to check.</p>', false);
+                return;
+            }
+            
+            showLoading();
+            let results = [];
+            
+            try {
+                if (account) {
+                    const result = await client.checkBankAccount(account);
+                    results.push({
+                        title: 'Bank Account Check',
+                        result: result
+                    });
+                }
+                
+                if (phone) {
+                    const result = await client.checkPhoneNumber(phone);
+                    results.push({
+                        title: 'Phone Number Check',
+                        result: result
+                    });
+                }
+                
+                if (company) {
+                    const result = await client.checkCompany(company);
+                    results.push({
+                        title: 'Company Check',
+                        result: result
+                    });
+                }
+                
+                displayResults(results);
+            } catch (error) {
+                showResult('<p><strong>Error:</strong> ' + error.message + '</p>', false);
+            }
+        }
+        
+        async function getStats() {
+            showLoading();
+            try {
+                const result = await client.getStats();
+                displayResults([{
+                    title: 'Database Statistics',
+                    result: result
+                }]);
+            } catch (error) {
+                showResult('<p><strong>Error:</strong> ' + error.message + '</p>', false);
+            }
+        }
+        
+        function displayResults(results) {
+            let html = '';
+            
+            results.forEach(item => {
+                const isSuccess = item.result.success;
+                html += '<h3>' + item.title + '</h3>';
+                html += '<p><strong>Status:</strong> ' + (isSuccess ? 'Success' : 'Error') + ' (HTTP ' + item.result.http_code + ')</p>';
+                
+                if (item.result.error) {
+                    html += '<p><strong>Error:</strong> ' + item.result.error + '</p>';
+                }
+                
+                html += '<pre>' + JSON.stringify(item.result.data || item.result.raw_response || item.result, null, 2) + '</pre>';
+            });
+            
+            showResult(html, results.every(r => r.result.success));
+        }
+    </script>
+</body>
+</html>
+
