@@ -8,18 +8,20 @@ import os
 import json
 import requests
 from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect, url_for
+from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
 import tempfile
 from datetime import datetime
 
 app = Flask(__name__, 
-            static_folder='assets',
-            static_url_path='/assets',
+            static_folder='.',
+            static_url_path='',
             template_folder='templates')
+CORS(app)
 
 # Configuration
-app.secret_key = os.getenv('ENCRYPTION_KEY', 'petronas_secure_key_2024')
+app.secret_key = os.environ.get('ENCRYPTION_KEY', 'petronas_secure_key_2024')
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
 app.config['UPLOAD_FOLDER'] = 'uploads/deepfake_scans'
 
@@ -29,8 +31,8 @@ os.makedirs('uploads/evidence', exist_ok=True)
 os.makedirs('uploads/test_ai_detection', exist_ok=True)
 
 # Sightengine API Configuration
-SIGHTENGINE_API_USER = os.getenv('SIGHTENGINE_API_USER', '1931720966')
-SIGHTENGINE_API_SECRET = os.getenv('SIGHTENGINE_API_SECRET', 'Ey7EbcJMjAtQZDiD38xLtyXvJrqpCVmw')
+SIGHTENGINE_API_USER = os.environ.get('SIGHTENGINE_API_USER', '1931720966')
+SIGHTENGINE_API_SECRET = os.environ.get('SIGHTENGINE_API_SECRET', 'Ey7EbcJMjAtQZDiD38xLtyXvJrqpCVmw')
 SIGHTENGINE_API_URL = 'https://api.sightengine.com/1.0/check.json'
 
 # Fake data (matching PHP version)
@@ -307,16 +309,16 @@ def set_language():
     return jsonify({'success': False, 'error': 'Invalid language'}), 400
 
 
-@app.route('/<path:filename>')
-def serve_static(filename):
-    """Serve static files from root directory"""
+@app.route('/<path:path>')
+def serve_static(path):
+    """Serve static files"""
     # Don't serve PHP files
-    if filename.endswith('.php'):
+    if path.endswith('.php'):
         return "PHP files not supported. Please use Python endpoints.", 404
     
     # Try to serve from root directory
-    if os.path.exists(filename) and os.path.isfile(filename):
-        return send_from_directory('.', filename)
+    if os.path.exists(path) and os.path.isfile(path):
+        return send_from_directory('.', path)
     
     return "Not found", 404
 
@@ -363,6 +365,6 @@ def not_found(error):
 
 
 if __name__ == '__main__':
-    port = int(os.getenv('PORT', 5000))
+    port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
 
