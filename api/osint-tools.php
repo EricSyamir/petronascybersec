@@ -113,64 +113,80 @@ class OSINTToolsAPI {
         $registeredCount = 0;
         $totalChecked = 0;
         
-        // Check if result has platforms array (direct format)
+        // Check if result has platforms array (direct format from Python script)
         if (isset($result['platforms']) && is_array($result['platforms'])) {
             $totalChecked = count($result['platforms']);
             foreach ($result['platforms'] as $platform) {
-                // Check if platform shows email is registered
-                // Holehe returns: exists=true/false, or found=true/false, or emailExists=true
-                $isRegistered = false;
+                // Preserve all platforms with their status (used, not_used, rate_limit)
+                // The Python script returns: status='used'/'not_used'/'rate_limit'
+                $status = $platform['status'] ?? 'unknown';
+                $isRegistered = ($status === 'used');
                 
-                if (isset($platform['exists']) && ($platform['exists'] === true || $platform['exists'] === 'true')) {
-                    $isRegistered = true;
-                } elseif (isset($platform['found']) && ($platform['found'] === true || $platform['found'] === 'true')) {
-                    $isRegistered = true;
-                } elseif (isset($platform['emailExists']) && ($platform['emailExists'] === true || $platform['emailExists'] === 'true')) {
-                    $isRegistered = true;
-                } elseif (isset($platform['status']) && ($platform['status'] === 'exists' || $platform['status'] === 'registered')) {
-                    $isRegistered = true;
-                }
-                
-                // Only include registered platforms
                 if ($isRegistered) {
-                    // Ensure platform has required fields
-                    $platformData = [
-                        'platform' => $platform['platform'] ?? $platform['name'] ?? $platform['site'] ?? 'Unknown',
-                        'url' => $platform['url'] ?? $platform['link'] ?? '#',
-                        'exists' => true
-                    ];
-                    $platforms[] = $platformData;
                     $registeredCount++;
                 }
+                
+                // Include all platforms (not just registered ones) with status
+                $platformData = [
+                    'platform' => $platform['platform'] ?? $platform['name'] ?? $platform['site'] ?? 'Unknown',
+                    'url' => $platform['url'] ?? $platform['link'] ?? '#',
+                    'status' => $status, // Preserve status for JavaScript
+                    'exists' => $isRegistered // For backward compatibility
+                ];
+                $platforms[] = $platformData;
             }
         }
         // Check if result is an array of platforms (alternative format)
         elseif (is_array($result) && !isset($result['platforms'])) {
             // Check if it's a list of platform results
             foreach ($result as $key => $value) {
-                if (is_array($value) && isset($value['exists'])) {
+                if (is_array($value)) {
                     $totalChecked++;
-                    if ($value['exists'] === true || $value['exists'] === 'true') {
-                        $platformData = [
-                            'platform' => $value['platform'] ?? $value['name'] ?? $key,
-                            'url' => $value['url'] ?? $value['link'] ?? '#',
-                            'exists' => true
-                        ];
-                        $platforms[] = $platformData;
+                    $isRegistered = false;
+                    
+                    // Check various formats
+                    if (isset($value['exists']) && ($value['exists'] === true || $value['exists'] === 'true')) {
+                        $isRegistered = true;
+                    } elseif (isset($value['found']) && ($value['found'] === true || $value['found'] === 'true')) {
+                        $isRegistered = true;
+                    } elseif (isset($value['status']) && $value['status'] === 'used') {
+                        $isRegistered = true;
+                    }
+                    
+                    if ($isRegistered) {
                         $registeredCount++;
                     }
+                    
+                    $status = $value['status'] ?? ($isRegistered ? 'used' : 'not_used');
+                    
+                    $platformData = [
+                        'platform' => $value['platform'] ?? $value['name'] ?? $key,
+                        'url' => $value['url'] ?? $value['link'] ?? '#',
+                        'status' => $status,
+                        'exists' => $isRegistered
+                    ];
+                    $platforms[] = $platformData;
                 }
             }
         }
+        
+        // Get statistics from Python script result if available
+        $statistics = $result['statistics'] ?? [
+            'total_checked' => $totalChecked,
+            'used_count' => $registeredCount,
+            'not_used_count' => count(array_filter($platforms, function($p) { return ($p['status'] ?? '') === 'not_used'; })),
+            'rate_limit_count' => count(array_filter($platforms, function($p) { return ($p['status'] ?? '') === 'rate_limit'; }))
+        ];
         
         // Determine if it's a real person or burner email
         $analysis = $this->analyzeEmailLegitimacy($registeredCount, $result);
         
         return [
             'email' => $email,
-            'platforms' => $platforms, // Only registered platforms
+            'platforms' => $platforms, // All platforms with status
             'registered_count' => $registeredCount,
             'total_checked' => $totalChecked,
+            'statistics' => $statistics, // Include statistics for JavaScript
             'analysis' => $analysis,
             'raw_data' => $result // Keep original data for reference
         ];
