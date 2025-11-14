@@ -155,6 +155,8 @@ session.gc_maxlifetime = 3600
 
 ## Installation
 
+### Local Development
+
 1. **Clone or download the repository**
    ```bash
    git clone https://github.com/EricSyamir/petronascybersec.git
@@ -172,8 +174,43 @@ session.gc_maxlifetime = 3600
    ```bash
    mkdir -p uploads/deepfake_scans
    mkdir -p uploads/evidence
-   chmod 755 uploads uploads/deepfake_scans uploads/evidence
+   mkdir -p uploads/test_ai_detection
+   chmod 755 uploads uploads/deepfake_scans uploads/evidence uploads/test_ai_detection
    ```
+
+5. **Install Python dependencies** (for ML model)
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+### Deploy to Render
+
+1. **Connect your GitHub repository to Render**
+   - Go to https://render.com
+   - Click "New +" → "Web Service"
+   - Connect your repository: `EricSyamir/petronascybersec`
+
+2. **Configure service settings:**
+   - **Environment**: PHP
+   - **Region**: Singapore (or closest to users)
+   - **Build Command**: 
+     ```bash
+     mkdir -p uploads/deepfake_scans uploads/evidence uploads/test_ai_detection && chmod -R 755 uploads && python3 -m pip install --user -r requirements.txt || true
+     ```
+   - **Start Command**: 
+     ```bash
+     php -S 0.0.0.0:$PORT -t .
+     ```
+
+3. **Set environment variables:**
+   - `SIGHTENGINE_API_USER`: Your Sightengine API user
+   - `SIGHTENGINE_API_SECRET`: Your Sightengine API secret
+   - `ENCRYPTION_KEY`: Generate with `openssl rand -hex 32`
+   - `PYTHON_PATH`: `/usr/bin/python3` (or your Python path)
+
+4. **Deploy** - Render will automatically build and deploy your application
+
+See `render.yaml` for automated deployment configuration.
 
 ## Configuration
 

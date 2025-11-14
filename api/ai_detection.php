@@ -6,7 +6,7 @@
  */
 
 // Include the AIDetectionTester class
-require_once __DIR__ . '/../test_ai_detection.php';
+require_once __DIR__ . '/../includes/ai_detection_tester.php';
 
 header('Content-Type: application/json');
 
