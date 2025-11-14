@@ -1,3 +1,10 @@
+# Web framework dependencies (required)
+Flask>=2.3.0
+requests>=2.31.0
+Werkzeug>=2.3.0
+gunicorn>=21.2.0
+
+# ML/AI dependencies (optional - for local AI detection)
 torch>=2.0.0
 torchvision>=0.15.0
 timm>=0.9.0

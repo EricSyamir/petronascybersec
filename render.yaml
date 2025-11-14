@@ -1,8 +1,8 @@
 services:
-  # PHP Web Service
+  # Python Web Service (Flask)
   - type: web
     name: petronas-cybercrime-platform
-    env: php
+    env: python
     region: singapore
     plan: starter
     buildCommand: |
@@ -10,23 +10,18 @@ services:
       mkdir -p uploads/deepfake_scans
       mkdir -p uploads/evidence
       mkdir -p uploads/test_ai_detection
-      chmod -R 755 uploads
+      mkdir -p templates
       
-      # Install Python dependencies for ML model
-      if command -v python3 &> /dev/null; then
-        python3 -m pip install --user -r requirements.txt || true
-      fi
-    startCommand: php -S 0.0.0.0:$PORT -t .
+      # Install Python dependencies
+      pip install -r requirements.txt
+      pip install gunicorn
+    startCommand: gunicorn --bind 0.0.0.0:$PORT app:app
     envVars:
-      - key: PHP_VERSION
-        value: 8.1
       - key: SIGHTENGINE_API_USER
         sync: false
       - key: SIGHTENGINE_API_SECRET
         sync: false
       - key: ENCRYPTION_KEY
         generateValue: true
-      - key: PYTHON_PATH
-        value: /usr/bin/python3
-    healthCheckPath: /api/status.php
+    healthCheckPath: /api/status
 
