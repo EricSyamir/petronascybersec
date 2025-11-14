@@ -1978,24 +1978,34 @@ class DeepfakeScanner {
         const humanProb = mlResult.probabilities?.human || 0;
         const aiProb = mlResult.probabilities?.ai || 0;
         
+        // Format probability for display (handle scientific notation)
+        const formatProbability = (prob) => {
+            if (prob < 0.0001) {
+                return prob.toExponential(6);
+            }
+            return (prob * 100).toFixed(6) + '%';
+        };
+        
         html += `<div class="prob-item">`;
         html += `<div class="prob-header">`;
         html += `<span class="prob-label">Human-Generated:</span>`;
-        html += `<span class="prob-value">${Math.round(humanProb * 100)}%</span>`;
+        html += `<span class="prob-value">${formatProbability(humanProb)}</span>`;
         html += `</div>`;
         html += `<div class="prob-bar">`;
-        html += `<div class="prob-fill human" style="width: ${humanProb * 100}%"></div>`;
+        html += `<div class="prob-fill human" style="width: ${Math.min(humanProb * 100, 100)}%"></div>`;
         html += `</div>`;
+        html += `<div class="prob-exact"><small>Exact value: ${humanProb}</small></div>`;
         html += `</div>`;
         
         html += `<div class="prob-item">`;
         html += `<div class="prob-header">`;
         html += `<span class="prob-label">AI-Generated:</span>`;
-        html += `<span class="prob-value">${Math.round(aiProb * 100)}%</span>`;
+        html += `<span class="prob-value">${formatProbability(aiProb)}</span>`;
         html += `</div>`;
         html += `<div class="prob-bar">`;
-        html += `<div class="prob-fill ai" style="width: ${aiProb * 100}%"></div>`;
+        html += `<div class="prob-fill ai" style="width: ${Math.min(aiProb * 100, 100)}%"></div>`;
         html += `</div>`;
+        html += `<div class="prob-exact"><small>Exact value: ${aiProb}</small></div>`;
         html += `</div>`;
         
         html += `</div>`;
@@ -2012,11 +2022,11 @@ class DeepfakeScanner {
             
             html += `<div class="output-item">`;
             html += `<span class="output-label">Human logit:</span>`;
-            html += `<span class="output-value">${humanLogit !== undefined ? humanLogit.toFixed(6) : 'N/A'}</span>`;
+            html += `<span class="output-value">${humanLogit !== undefined ? humanLogit : 'N/A'}</span>`;
             html += `</div>`;
             html += `<div class="output-item">`;
             html += `<span class="output-label">AI logit:</span>`;
-            html += `<span class="output-value">${aiLogit !== undefined ? aiLogit.toFixed(6) : 'N/A'}</span>`;
+            html += `<span class="output-value">${aiLogit !== undefined ? aiLogit : 'N/A'}</span>`;
             html += `</div>`;
             
             // Show the difference
@@ -2024,7 +2034,7 @@ class DeepfakeScanner {
                 const logitDiff = aiLogit - humanLogit;
                 html += `<div class="output-item">`;
                 html += `<span class="output-label">Logit Difference (AI - Human):</span>`;
-                html += `<span class="output-value ${logitDiff > 0 ? 'ai-highlight' : 'human-highlight'}">${logitDiff.toFixed(6)}</span>`;
+                html += `<span class="output-value ${logitDiff > 0 ? 'ai-highlight' : 'human-highlight'}">${logitDiff}</span>`;
                 html += `</div>`;
             }
             
