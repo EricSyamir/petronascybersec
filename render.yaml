@@ -9,8 +9,8 @@ services:
       # Create necessary directories
       mkdir -p uploads/deepfake_scans uploads/evidence uploads/test_ai_detection templates
       
-      # Install minimal Python dependencies (ML dependencies skipped to avoid build timeout)
-      pip install Flask>=2.3.0 flask-cors requests>=2.31.0 Werkzeug>=2.3.0 gunicorn>=21.2.0
+      # Install minimal Python dependencies from requirements file
+      pip install -r requirements-minimal.txt
     startCommand: gunicorn --bind 0.0.0.0:$PORT app:app
     envVars:
       - key: SIGHTENGINE_API_USER
