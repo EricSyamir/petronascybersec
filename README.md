@@ -1,6 +1,8 @@
 # PETRONAS Cybercrime Platform
 
-A comprehensive cybersecurity platform for combating cybercrime in Malaysia through incident reporting, deepfake detection, OSINT monitoring, and scammer database management.
+**Advanced Deepfake Recognition & Cybersecurity Platform**
+
+A comprehensive cybersecurity platform featuring state-of-the-art **deepfake recognition technology** for combating cybercrime in Malaysia. The platform specializes in AI-powered deepfake detection and analysis, along with incident reporting, OSINT monitoring, and scammer database management.
 
 ## Table of Contents
 
@@ -18,29 +20,83 @@ A comprehensive cybersecurity platform for combating cybercrime in Malaysia thro
 
 ## Overview
 
-The PETRONAS Cybercrime Platform is a PHP-based web application designed to help combat cybercrime in Malaysia. It provides tools for:
+The PETRONAS Cybercrime Platform is a PHP-based web application designed to help combat cybercrime in Malaysia, with a **primary focus on deepfake recognition and detection**. The platform leverages advanced AI technology to identify and analyze deepfake content in images and videos.
 
-- **Incident Reporting**: Report cybercrime incidents with evidence upload
-- **Deepfake Detection**: AI-powered detection of AI-generated and deepfake content
+### Key Capabilities
+
+- **🎯 Deepfake Recognition**: Advanced AI-powered detection of AI-generated and deepfake content in images and videos
+- **📊 Real-time Analysis**: Instant deepfake detection with confidence scoring and detailed technical analysis
+- **🔍 Multi-format Support**: Analyze images (JPEG, PNG, GIF, WebP, BMP) and videos (MP4, AVI, MOV, WMV)
+- **🌐 URL & Upload Support**: Analyze media from file uploads or direct URLs
+- **📈 Comprehensive Reporting**: Detailed analysis reports with authenticity scores and indicators
+
+### Additional Features
+
+- **Incident Reporting**: Report cybercrime incidents with automatic deepfake detection
 - **OSINT Monitoring**: Real-time threat intelligence monitoring and analysis
 - **Scammer Database**: Searchable database of known scammers
 - **Public Dashboard**: Public-facing interface for scammer searches and breach checking
 
 ## Features
 
-### Core Features
+### 🎯 Primary Feature: Deepfake Recognition
+
+**Deepfake Scanner** (`deepfake-scanner.php`) - **The Platform's Core Feature**
+
+The platform's flagship feature is its advanced deepfake recognition system, powered by Sightengine's state-of-the-art AI detection models.
+
+#### Deepfake Detection Capabilities
+
+- **✅ Image Deepfake Detection**
+  - Detects AI-generated images with high accuracy
+  - Identifies deepfake faces and manipulated content
+  - Supports JPEG, PNG, GIF, WebP, BMP formats
+  - Confidence scoring (0-100%) for authenticity assessment
+
+- **✅ Video Deepfake Detection**
+  - Analyzes video files frame-by-frame for AI-generated content
+  - Detects deepfake videos and synthetic media
+  - Supports MP4, AVI, MOV, WMV formats
+  - Frame-level analysis for comprehensive detection
+
+- **✅ Dual Analysis Methods**
+  - **File Upload**: Direct upload from device
+  - **URL Analysis**: Analyze media from web URLs
+  - Automatic format detection and processing
+
+- **✅ Comprehensive Analysis Reports**
+  - AI-generated content detection score
+  - Deepfake confidence percentage
+  - Detailed technical indicators
+  - Authenticity assessment
+  - Multiple analysis tabs:
+    - General analysis overview
+    - Face analysis (for images)
+    - Text content analysis
+    - Technical details and metadata
+
+- **✅ Integration Features**
+  - Automatic deepfake detection in incident reports
+  - Chrome Extension integration for browser-based scanning
+  - API access for programmatic analysis
+  - Batch processing support
+
+#### Technical Specifications
+
+- **Detection Models**: 
+  - `genai` - AI-generated content detection (images & videos)
+  - `deepfake` - Deepfake-specific detection (images only)
+- **Accuracy**: High-precision detection with confidence scoring
+- **Processing Speed**: Real-time analysis for images, frame-by-frame for videos
+- **Rate Limiting**: 10 scans per 5 minutes per user
+
+### Additional Core Features
 
 1. **Public Dashboard** (`public-dashboard.php`)
    - Scammer database search (phone, email, bank account, website)
    - Data breach checking via HaveIBeenPwned API
    - Statistics dashboard
    - Safety education resources
-
-2. **Deepfake Scanner** (`deepfake-scanner.php`)
-   - Image and video upload analysis
-   - URL-based media analysis
-   - AI-generated content detection
-   - Confidence scoring and detailed analysis
 
 3. **Incident Reporting** (`report-incident.php`)
    - Multiple incident types (Phishing, Scam, Deepfake, etc.)
@@ -346,9 +402,13 @@ priority=high
 
 ### Public Access
 
-1. **Scammer Search**: Navigate to `public-dashboard.php` and search by phone, email, bank account, or website
-2. **Deepfake Scanner**: Upload images/videos or provide URL at `deepfake-scanner.php`
-3. **Report Incident**: Submit cybercrime reports at `report-incident.php`
+1. **🎯 Deepfake Recognition** (Primary Feature): 
+   - Navigate to `deepfake-scanner.php`
+   - Upload images/videos or provide URL
+   - Get instant deepfake detection results with confidence scores
+   - View detailed analysis reports
+2. **Scammer Search**: Navigate to `public-dashboard.php` and search by phone, email, bank account, or website
+3. **Report Incident**: Submit cybercrime reports at `report-incident.php` (includes automatic deepfake detection)
 4. **OSINT Monitor**: Access OSINT tools at `osint-monitor.php`
 
 ### Authenticated Access
@@ -387,19 +447,29 @@ Login at `login.php` to access:
 
 ## External APIs
 
-### Sightengine API
+### Sightengine API (Primary Deepfake Recognition Engine)
 
-**Purpose**: AI-generated content and deepfake detection  
+**Purpose**: **Advanced AI-generated content and deepfake detection** - The core technology powering the platform's deepfake recognition feature  
 **Status**: ✅ Active  
 **Endpoint**: `https://api.sightengine.com/1.0/check.json`  
-**Model**: `genai` (AI detection), `deepfake` (images only)  
+**Models**: 
+- `genai` - AI-generated content detection (works for both images and videos)
+- `deepfake` - Specialized deepfake detection (images only, provides enhanced accuracy for face-swapping and manipulation detection)  
 **Rate Limit**: Subject to subscription tier  
 **Cost**: Pay-per-use
 
+**Deepfake Recognition Capabilities**:
+- Detects AI-generated images with high precision
+- Identifies deepfake faces and manipulated content
+- Analyzes video files frame-by-frame for synthetic content
+- Provides confidence scores for authenticity assessment
+- Supports multiple image and video formats
+
 **Integration Points**:
-- `api/sightengine.php`
-- `deepfake-scanner.php`
-- `report-incident.php`
+- `api/sightengine.php` - Main deepfake detection API wrapper
+- `deepfake-scanner.php` - Primary deepfake recognition interface
+- `report-incident.php` - Automatic deepfake detection in incident reports
+- Chrome Extension - Browser-based deepfake scanning
 
 ### HaveIBeenPwned API
 
@@ -511,7 +581,7 @@ petronas-cybercrime-platform/
 ├── index.php                   # Home page
 ├── login.php                   # Login page
 ├── logout.php                  # Logout handler
-├── deepfake-scanner.php        # Deepfake scanner page
+├── deepfake-scanner.php        # 🎯 PRIMARY: Deepfake recognition & detection page
 ├── osint-monitor.php          # OSINT monitoring dashboard
 ├── public-dashboard.php       # Public scammer search
 ├── report-incident.php        # Incident reporting form
@@ -571,6 +641,18 @@ For issues or questions:
 
 ---
 
+## 🎯 Deepfake Recognition - Platform Highlight
+
+This platform specializes in **deepfake recognition and detection**, providing state-of-the-art AI-powered analysis to identify synthetic and manipulated media. Whether you need to verify the authenticity of an image, detect deepfake videos, or analyze suspicious content, the platform's advanced detection algorithms provide accurate, real-time results with detailed confidence scoring.
+
+**Key Use Cases**:
+- Verify authenticity of images and videos
+- Detect deepfake content in social media
+- Analyze suspicious media in incident reports
+- Protect against AI-generated misinformation
+- Investigate potential deepfake scams
+
 **Version**: 1.0.0  
-**Last Updated**: January 2025
+**Last Updated**: January 2025  
+**Primary Feature**: Advanced Deepfake Recognition & Detection
 
