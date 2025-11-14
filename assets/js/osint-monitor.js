@@ -1011,7 +1011,6 @@ function displayEmailResults(result, container) {
                 html += `<div class="platform-item rate-limit">
                     <span class="platform-status-icon">[x]</span>
                     <span class="platform-name">${escapeHtml(platform.platform)}</span>
-                    <span class="rate-limit-note">Rate limit reached</span>
                 </div>`;
             });
             html += '</div>';
