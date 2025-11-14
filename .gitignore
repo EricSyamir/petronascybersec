@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads (ignore all uploaded files)
+uploads/
+!uploads/.gitkeep
+
+# Temporary files
+*.tmp
+*.log
+
+# Cache
+cache/
+*.cache
+
