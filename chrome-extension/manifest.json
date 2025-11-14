@@ -1,0 +1,57 @@
+{
+  "manifest_version": 3,
+  "name": "PETRONAS Cybercrime Reporter",
+  "version": "1.0.0",
+  "description": "Report cybercrime incidents and scan media for deepfakes directly from your browser",
+  
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "PETRONAS Cybercrime Reporter"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_end"
+    }
+  ],
+  "permissions": [
+    "activeTab",
+    "storage",
+    "contextMenus",
+    "scripting",
+    "notifications",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://api.sightengine.com/*",
+    "https://generativelanguage.googleapis.com/*",
+    "https://localhost/*",
+    "https://petronas-cybercrime.com/*",
+    "http://localhost/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/*",
+        "popup.html",
+        "scanner.html"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "externally_connectable": {
+    "matches": [
+      "https://localhost/*",
+      "https://petronas-cybercrime.com/*"
+    ]
+  },
+  "options_page": "options.html",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}

@@ -1,0 +1,470 @@
+/* PETRONAS Cybercrime Reporter Extension - Content Script Styles - Futuristic Theme */
+
+:root {
+    --petronas-teal: #00A19C;
+    --petronas-teal-light: #33B8B4;
+    --petronas-navy: #001F3F;
+    --petronas-navy-light: #003D7A;
+    --petronas-white: #FFFFFF;
+    --success: #00FFB4;
+    --warning: #FFC107;
+    --danger: #FF4757;
+    --info: #81D4FA;
+    --glow-teal: 0 0 20px rgba(0, 161, 156, 0.6), 0 0 40px rgba(0, 161, 156, 0.3);
+}
+
+/* Threat highlighting styles */
+.petronas-threat-highlight {
+    outline: 2px solid var(--danger) !important;
+    outline-offset: 2px !important;
+    background-color: rgba(255, 71, 87, 0.15) !important;
+    position: relative !important;
+    box-shadow: 0 0 15px rgba(255, 71, 87, 0.4) !important;
+}
+
+.petronas-threat-highlight::after {
+    content: "⚠️";
+    position: absolute !important;
+    top: -10px !important;
+    right: -10px !important;
+    background: var(--danger) !important;
+    color: white !important;
+    border-radius: 50% !important;
+    width: 20px !important;
+    height: 20px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 10px !important;
+    z-index: 9999 !important;
+    font-family: Arial, sans-serif !important;
+    box-shadow: 0 0 10px rgba(255, 71, 87, 0.6) !important;
+}
+
+.petronas-safe-highlight {
+    outline: 2px solid var(--success) !important;
+    outline-offset: 2px !important;
+    background-color: rgba(0, 255, 180, 0.15) !important;
+    position: relative !important;
+    box-shadow: 0 0 15px rgba(0, 255, 180, 0.4) !important;
+}
+
+.petronas-safe-highlight::after {
+    content: "✓";
+    position: absolute !important;
+    top: -10px !important;
+    right: -10px !important;
+    background: var(--success) !important;
+    color: var(--petronas-navy) !important;
+    border-radius: 50% !important;
+    width: 20px !important;
+    height: 20px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 10px !important;
+    z-index: 9999 !important;
+    font-family: Arial, sans-serif !important;
+    font-weight: bold !important;
+    box-shadow: 0 0 10px rgba(0, 255, 180, 0.6) !important;
+}
+
+/* Scan overlay styles */
+.petronas-scan-overlay {
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    background: rgba(0, 31, 63, 0.95) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    color: var(--petronas-white) !important;
+    padding: 15px 20px !important;
+    border-radius: 12px !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
+    font-size: 14px !important;
+    z-index: 10000 !important;
+    box-shadow: 0 8px 24px rgba(0, 161, 156, 0.2), 0 4px 12px rgba(0, 31, 63, 0.15) !important;
+    max-width: 320px !important;
+    min-width: 250px !important;
+    border: 2px solid var(--petronas-teal) !important;
+    animation: petronasFadeIn 0.3s ease-out !important;
+}
+
+@keyframes petronasFadeIn {
+    from {
+        opacity: 0 !important;
+        transform: translateX(100px) !important;
+    }
+    to {
+        opacity: 1 !important;
+        transform: translateX(0) !important;
+    }
+}
+
+.petronas-scan-overlay::before {
+    content: "🛡️" !important;
+    display: inline-block !important;
+    margin-right: 8px !important;
+    font-size: 16px !important;
+}
+
+.petronas-scan-progress {
+    width: 100% !important;
+    height: 6px !important;
+    background: rgba(0, 31, 63, 0.6) !important;
+    border-radius: 3px !important;
+    margin-top: 12px !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(0, 161, 156, 0.2) !important;
+}
+
+.petronas-scan-progress-bar {
+    height: 100% !important;
+    background: linear-gradient(90deg, var(--petronas-teal-dark), var(--petronas-teal)) !important;
+    width: 0% !important;
+    transition: width 0.3s ease !important;
+    border-radius: 3px !important;
+    box-shadow: 0 0 10px rgba(0, 161, 156, 0.6) !important;
+}
+
+/* Threat tooltip styles */
+.petronas-threat-tooltip {
+    position: absolute !important;
+    background: rgba(0, 31, 63, 0.95) !important;
+    backdrop-filter: blur(10px) !important;
+    color: var(--petronas-white) !important;
+    padding: 8px 12px !important;
+    border-radius: 8px !important;
+    font-size: 12px !important;
+    font-family: 'Inter', Arial, sans-serif !important;
+    z-index: 10001 !important;
+    max-width: 200px !important;
+    word-wrap: break-word !important;
+    box-shadow: 0 4px 16px rgba(0, 161, 156, 0.3) !important;
+    border: 1px solid var(--petronas-teal) !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+    transition: opacity 0.2s ease !important;
+}
+
+.petronas-threat-tooltip::after {
+    content: "" !important;
+    position: absolute !important;
+    top: 100% !important;
+    left: 50% !important;
+    margin-left: -5px !important;
+    border-width: 5px !important;
+    border-style: solid !important;
+    border-color: var(--petronas-teal) transparent transparent transparent !important;
+}
+
+.petronas-threat-tooltip.show {
+    opacity: 1 !important;
+}
+
+/* Floating scan button */
+.petronas-floating-scan {
+    position: fixed !important;
+    bottom: 20px !important;
+    right: 20px !important;
+    width: 60px !important;
+    height: 60px !important;
+    background: linear-gradient(135deg, var(--petronas-teal-dark), var(--petronas-teal)) !important;
+    border-radius: 50% !important;
+    box-shadow: 0 0 25px rgba(0, 161, 156, 0.6) !important;
+    cursor: pointer !important;
+    z-index: 9998 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: white !important;
+    font-size: 24px !important;
+    transition: all 0.3s ease !important;
+    border: 2px solid var(--petronas-teal-light) !important;
+    font-family: Arial, sans-serif !important;
+}
+
+.petronas-floating-scan:hover {
+    transform: scale(1.1) !important;
+    box-shadow: 0 0 35px rgba(0, 161, 156, 0.8) !important;
+}
+
+.petronas-floating-scan.scanning {
+    animation: petronasRotate 2s linear infinite !important;
+}
+
+@keyframes petronasRotate {
+    from {
+        transform: rotate(0deg) !important;
+    }
+    to {
+        transform: rotate(360deg) !important;
+    }
+}
+
+/* Page threat summary */
+.petronas-threat-summary {
+    position: fixed !important;
+    top: 50% !important;
+    right: 20px !important;
+    transform: translateY(-50%) !important;
+    background: rgba(0, 31, 63, 0.95) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    border: 2px solid var(--petronas-teal) !important;
+    border-radius: 16px !important;
+    padding: 20px !important;
+    box-shadow: 0 8px 24px rgba(0, 161, 156, 0.2), 0 4px 12px rgba(0, 31, 63, 0.15) !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
+    z-index: 10000 !important;
+    min-width: 280px !important;
+    max-width: 350px !important;
+    animation: petronasSummarySlide 0.4s ease-out !important;
+}
+
+@keyframes petronasSummarySlide {
+    from {
+        opacity: 0 !important;
+        transform: translateY(-50%) translateX(100px) !important;
+    }
+    to {
+        opacity: 1 !important;
+        transform: translateY(-50%) translateX(0) !important;
+    }
+}
+
+.petronas-threat-summary-header {
+    display: flex !important;
+    align-items: center !important;
+    margin-bottom: 15px !important;
+    padding-bottom: 10px !important;
+    border-bottom: 1px solid rgba(0, 161, 156, 0.2) !important;
+}
+
+.petronas-threat-summary-header img {
+    width: 24px !important;
+    height: 24px !important;
+    margin-right: 10px !important;
+    filter: drop-shadow(0 0 8px rgba(0, 161, 156, 0.5)) !important;
+}
+
+.petronas-threat-summary-title {
+    font-weight: 600 !important;
+    color: var(--petronas-teal) !important;
+    font-size: 16px !important;
+    margin: 0 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+}
+
+.petronas-threat-summary-close {
+    background: none !important;
+    border: none !important;
+    font-size: 20px !important;
+    cursor: pointer !important;
+    color: var(--petronas-teal) !important;
+    margin-left: auto !important;
+    padding: 2px !important;
+    border-radius: 6px !important;
+    transition: all 0.2s ease !important;
+}
+
+.petronas-threat-summary-close:hover {
+    background: rgba(0, 161, 156, 0.2) !important;
+    color: var(--petronas-white) !important;
+    text-shadow: var(--glow-teal) !important;
+    transform: rotate(90deg) !important;
+}
+
+.petronas-threat-item {
+    display: flex !important;
+    align-items: flex-start !important;
+    margin-bottom: 12px !important;
+    padding: 8px !important;
+    border-radius: 8px !important;
+    border-left: 3px solid !important;
+    backdrop-filter: blur(10px) !important;
+}
+
+.petronas-threat-item.high {
+    background: rgba(255, 193, 7, 0.15) !important;
+    border-left-color: var(--warning) !important;
+    box-shadow: inset 0 0 0 1px rgba(255, 193, 7, 0.3) !important;
+}
+
+.petronas-threat-item.medium {
+    background: rgba(129, 212, 250, 0.15) !important;
+    border-left-color: var(--info) !important;
+    box-shadow: inset 0 0 0 1px rgba(129, 212, 250, 0.3) !important;
+}
+
+.petronas-threat-item.low {
+    background: rgba(0, 255, 180, 0.15) !important;
+    border-left-color: var(--success) !important;
+    box-shadow: inset 0 0 0 1px rgba(0, 255, 180, 0.3) !important;
+}
+
+.petronas-threat-icon {
+    margin-right: 8px !important;
+    font-size: 16px !important;
+    flex-shrink: 0 !important;
+    margin-top: 2px !important;
+}
+
+.petronas-threat-details {
+    flex: 1 !important;
+}
+
+.petronas-threat-type {
+    font-weight: 600 !important;
+    color: var(--petronas-white) !important;
+    font-size: 13px !important;
+    margin-bottom: 4px !important;
+}
+
+.petronas-threat-description {
+    font-size: 12px !important;
+    color: var(--petronas-gray-light) !important;
+    line-height: 1.4 !important;
+    margin: 0 !important;
+}
+
+.petronas-threat-summary-actions {
+    margin-top: 15px !important;
+    padding-top: 15px !important;
+    border-top: 1px solid rgba(0, 161, 156, 0.2) !important;
+    display: flex !important;
+    gap: 10px !important;
+}
+
+.petronas-action-btn {
+    flex: 1 !important;
+    padding: 8px 12px !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    text-decoration: none !important;
+    text-align: center !important;
+    display: inline-block !important;
+    font-family: inherit !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+}
+
+.petronas-action-btn.primary {
+    background: linear-gradient(135deg, var(--petronas-teal-dark), var(--petronas-teal)) !important;
+    color: var(--petronas-white) !important;
+    border: 1px solid var(--petronas-teal) !important;
+    box-shadow: 0 0 15px rgba(0, 161, 156, 0.4) !important;
+}
+
+.petronas-action-btn.primary:hover {
+    box-shadow: 0 0 25px rgba(0, 161, 156, 0.6) !important;
+    transform: translateY(-2px) !important;
+}
+
+.petronas-action-btn.secondary {
+    background: rgba(0, 31, 63, 0.6) !important;
+    color: var(--petronas-white) !important;
+    border: 1px solid rgba(0, 161, 156, 0.3) !important;
+}
+
+.petronas-action-btn.secondary:hover {
+    background: rgba(0, 161, 156, 0.2) !important;
+    border-color: var(--petronas-teal) !important;
+    box-shadow: var(--glow-teal) !important;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .petronas-threat-highlight {
+        outline-width: 3px !important;
+        background-color: rgba(255, 71, 87, 0.3) !important;
+    }
+    
+    .petronas-safe-highlight {
+        outline-width: 3px !important;
+        background-color: rgba(0, 255, 180, 0.3) !important;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .petronas-scan-overlay,
+    .petronas-threat-summary,
+    .petronas-floating-scan,
+    .petronas-threat-tooltip {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* Print media - hide all extension elements */
+@media print {
+    .petronas-threat-highlight,
+    .petronas-safe-highlight,
+    .petronas-scan-overlay,
+    .petronas-threat-summary,
+    .petronas-floating-scan,
+    .petronas-threat-tooltip {
+        display: none !important;
+    }
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+    .petronas-scan-overlay {
+        right: 10px !important;
+        left: 10px !important;
+        max-width: none !important;
+        min-width: auto !important;
+    }
+    
+    .petronas-threat-summary {
+        right: 10px !important;
+        left: 10px !important;
+        max-width: none !important;
+        min-width: auto !important;
+    }
+    
+    .petronas-floating-scan {
+        bottom: 80px !important;
+        right: 15px !important;
+        width: 50px !important;
+        height: 50px !important;
+        font-size: 20px !important;
+    }
+}
+
+/* Accessibility improvements */
+.petronas-threat-highlight:focus,
+.petronas-safe-highlight:focus {
+    outline: 3px solid var(--petronas-teal) !important;
+    outline-offset: 3px !important;
+}
+
+/* Screen reader only content */
+.petronas-sr-only {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+/* High DPI display support */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .petronas-threat-highlight::after,
+    .petronas-safe-highlight::after {
+        font-size: 9px !important;
+        width: 18px !important;
+        height: 18px !important;
+        top: -9px !important;
+        right: -9px !important;
+    }
+}
