@@ -251,10 +251,6 @@ $baseUrl = $protocol . '://' . $host . $basePath;
                             <span class="tab-icon">🤖</span>
                             <span class="tab-label">Generated AI Analysis</span>
                         </button>
-                        <button class="analysis-tab" data-tab="machine-learning" onclick="showTab('machine-learning')">
-                            <span class="tab-icon">🧠</span>
-                            <span class="tab-label">Machine Learning Analysis</span>
-                        </button>
                     </div>
                     
                     <div class="analysis-content">
@@ -266,9 +262,6 @@ $baseUrl = $protocol . '://' . $host . $basePath;
                         </div>
                         <div class="analysis-panel" id="ai-generatedTab">
                             <div id="aiGeneratedAnalysis"></div>
-                        </div>
-                        <div class="analysis-panel" id="machine-learningTab">
-                            <div id="machineLearningAnalysis"></div>
                         </div>
                     </div>
                 </div>
