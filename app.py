@@ -8,17 +8,27 @@ import os
 import json
 import requests
 from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect, url_for
-from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
 import tempfile
 from datetime import datetime
 
+# Try to import CORS, make it optional
+try:
+    from flask_cors import CORS
+    cors_available = True
+except ImportError:
+    cors_available = False
+    print("Warning: flask-cors not available. CORS support disabled.")
+
 app = Flask(__name__, 
             static_folder='.',
             static_url_path='',
             template_folder='templates')
-CORS(app)
+
+# Enable CORS if available
+if cors_available:
+    CORS(app)
 
 # Configuration
 app.secret_key = os.environ.get('ENCRYPTION_KEY', 'petronas_secure_key_2024')
