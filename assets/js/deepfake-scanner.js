@@ -2045,10 +2045,19 @@ class DeepfakeScanner {
         
         // Show full JSON output for debugging/transparency
         html += '<div class="analysis-item">';
-        html += '<h4>📋 Complete ML Model Response</h4>';
+        html += '<h4>📋 Complete ML Model Response (JSON)</h4>';
         html += `<div class="json-output">`;
-        html += `<pre class="json-display">${JSON.stringify(mlResult, null, 2)}</pre>`;
+        // Format JSON with proper indentation and preserve exact number precision
+        const jsonString = JSON.stringify(mlResult, (key, value) => {
+            // Preserve exact number values (don't round)
+            if (typeof value === 'number') {
+                return value;
+            }
+            return value;
+        }, 2);
+        html += `<pre class="json-display">${jsonString}</pre>`;
         html += `</div>`;
+        html += '<p class="tech-note"><small>This is the complete JSON response from the Machine Learning model, including all raw outputs and probabilities with full precision.</small></p>';
         html += '</div>';
         
         // Combined Analysis Section
