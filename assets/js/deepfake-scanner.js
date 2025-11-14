@@ -902,51 +902,78 @@ class DeepfakeScanner {
             formData.append('media', file);
             formData.append('action', 'analyze_upload');
             
-            const response = await fetch('api/sightengine.php', {
+            // Check if it's an image (for ML detection)
+            const isImage = file.type.startsWith('image/');
+            
+            // Call SightEngine API
+            this.setProgress(20, 'Analyzing with SightEngine...');
+            const sightEngineResponse = await fetch('api/sightengine.php', {
                 method: 'POST',
                 body: formData
             });
             
-            this.setProgress(50, 'Analyzing content...');
-            
-            // Check if response is ok
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+            if (!sightEngineResponse.ok) {
+                throw new Error(`SightEngine API error! status: ${sightEngineResponse.status}`);
             }
             
-            // Get response text first to check if it's valid JSON
-            const responseText = await response.text();
-            console.log('API Response:', responseText);
-            
-            let result;
+            const sightEngineText = await sightEngineResponse.text();
+            let sightEngineResult;
             try {
-                result = JSON.parse(responseText);
+                sightEngineResult = JSON.parse(sightEngineText);
             } catch (parseError) {
-                console.error('JSON Parse Error:', parseError);
-                console.error('Response was:', responseText);
-                throw new Error(`Invalid response format. Expected JSON but got: ${responseText.substring(0, 100)}...`);
+                console.error('SightEngine JSON Parse Error:', parseError);
+                throw new Error(`Invalid SightEngine response format`);
             }
             
-            this.setProgress(90, 'Processing results...');
+            if (!sightEngineResult.success) {
+                throw new Error(sightEngineResult.error || 'SightEngine analysis failed');
+            }
             
-            if (result.success) {
-                this.setProgress(100, 'Analysis complete!');
-                setTimeout(() => {
-                    this.showProgress(false);
-                    console.log('Full API result:', result);
-                    console.log('Detection object:', result.detection);
-                    this.displayResults(result.detection, file);
-                    // Run OSINT checks after displaying results
-                    this.runOSINTChecks();
-                }, 1000);
-            } else {
-                // Enhanced error handling
-                let errorMessage = result.error || 'Analysis failed';
-                if (result.debug_info) {
-                    console.error('API Debug Info:', result.debug_info);
+            // Call ML detection API (only for images)
+            let mlResult = null;
+            if (isImage) {
+                this.setProgress(60, 'Analyzing with Machine Learning model...');
+                try {
+                    const mlFormData = new FormData();
+                    mlFormData.append('media', file);
+                    mlFormData.append('action', 'analyze_upload');
+                    
+                    const mlResponse = await fetch('api/ai_detection.php', {
+                        method: 'POST',
+                        body: mlFormData
+                    });
+                    
+                    if (mlResponse.ok) {
+                        const mlText = await mlResponse.text();
+                        try {
+                            mlResult = JSON.parse(mlText);
+                        } catch (e) {
+                            console.warn('ML detection failed to parse:', e);
+                            mlResult = null;
+                        }
+                    } else {
+                        console.warn('ML detection API error:', mlResponse.status);
+                        mlResult = null;
+                    }
+                } catch (mlError) {
+                    console.warn('ML detection error (non-critical):', mlError);
+                    mlResult = null; // ML detection is optional, continue with SightEngine only
                 }
-                throw new Error(errorMessage);
             }
+            
+            this.setProgress(90, 'Combining results...');
+            
+            // Combine results: 60% SightEngine, 40% ML (if available)
+            const combinedResult = this.combineResults(sightEngineResult.detection, mlResult, isImage);
+            
+            this.setProgress(100, 'Analysis complete!');
+            setTimeout(() => {
+                this.showProgress(false);
+                console.log('Combined result:', combinedResult);
+                this.displayResults(combinedResult, file);
+                // Run OSINT checks after displaying results
+                this.runOSINTChecks();
+            }, 1000);
             
         } catch (error) {
             this.showProgress(false);
@@ -1015,52 +1042,84 @@ class DeepfakeScanner {
         this.setProgress(20, 'Fetching media from URL...');
         
         try {
+            // Check if URL is an image (for ML detection)
+            const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
+            const urlLower = url.toLowerCase();
+            const isImage = imageExtensions.some(ext => urlLower.includes('.' + ext));
+            
+            // Call SightEngine API
             const formData = new FormData();
             formData.append('url', url);
             formData.append('action', 'analyze_url');
             
-            const response = await fetch('api/sightengine.php', {
+            this.setProgress(30, 'Analyzing with SightEngine...');
+            const sightEngineResponse = await fetch('api/sightengine.php', {
                 method: 'POST',
                 body: formData
             });
             
-            this.setProgress(70, 'Analyzing content...');
-            
-            // Check if response is ok
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+            if (!sightEngineResponse.ok) {
+                throw new Error(`SightEngine API error! status: ${sightEngineResponse.status}`);
             }
             
-            // Get response text first to check if it's valid JSON
-            const responseText = await response.text();
-            console.log('API Response:', responseText);
-            
-            let result;
+            const sightEngineText = await sightEngineResponse.text();
+            let sightEngineResult;
             try {
-                result = JSON.parse(responseText);
+                sightEngineResult = JSON.parse(sightEngineText);
             } catch (parseError) {
-                console.error('JSON Parse Error:', parseError);
-                console.error('Response was:', responseText);
-                throw new Error(`Invalid response format. Expected JSON but got: ${responseText.substring(0, 100)}...`);
+                console.error('SightEngine JSON Parse Error:', parseError);
+                throw new Error(`Invalid SightEngine response format`);
             }
+            
+            if (!sightEngineResult.success) {
+                throw new Error(sightEngineResult.error || 'SightEngine analysis failed');
+            }
+            
+            // Call ML detection API (only for images)
+            let mlResult = null;
+            if (isImage) {
+                this.setProgress(70, 'Analyzing with Machine Learning model...');
+                try {
+                    const mlFormData = new FormData();
+                    mlFormData.append('url', url);
+                    mlFormData.append('action', 'analyze_url');
+                    
+                    const mlResponse = await fetch('api/ai_detection.php', {
+                        method: 'POST',
+                        body: mlFormData
+                    });
+                    
+                    if (mlResponse.ok) {
+                        const mlText = await mlResponse.text();
+                        try {
+                            mlResult = JSON.parse(mlText);
+                        } catch (e) {
+                            console.warn('ML detection failed to parse:', e);
+                            mlResult = null;
+                        }
+                    } else {
+                        console.warn('ML detection API error:', mlResponse.status);
+                        mlResult = null;
+                    }
+                } catch (mlError) {
+                    console.warn('ML detection error (non-critical):', mlError);
+                    mlResult = null; // ML detection is optional, continue with SightEngine only
+                }
+            }
+            
+            this.setProgress(90, 'Combining results...');
+            
+            // Combine results: 60% SightEngine, 40% ML (if available)
+            const combinedAnalysis = this.combineResultsForUrl(sightEngineResult.analysis, mlResult, isImage);
             
             this.setProgress(100, 'Analysis complete!');
             
-            if (result.success) {
-                setTimeout(() => {
-                    this.showProgress(false);
-                    this.displayUrlResults(result.analysis, url);
-                    // Run OSINT checks after displaying results
-                    this.runOSINTChecks();
-                }, 1000);
-            } else {
-                // Enhanced error handling
-                let errorMessage = result.error || 'Analysis failed';
-                if (result.debug_info) {
-                    console.error('API Debug Info:', result.debug_info);
-                }
-                throw new Error(errorMessage);
-            }
+            setTimeout(() => {
+                this.showProgress(false);
+                this.displayUrlResults(combinedAnalysis, url);
+                // Run OSINT checks after displaying results
+                this.runOSINTChecks();
+            }, 1000);
             
         } catch (error) {
             this.showProgress(false);
@@ -1228,10 +1287,10 @@ class DeepfakeScanner {
         
         // Update confidence score
         const isAIGenerated = analysis.is_deepfake || analysis.is_ai_generated;
-        this.updateConfidenceScore(analysis.confidence_score, isAIGenerated);
+        this.updateConfidenceScore(analysis.confidence_score || 0, isAIGenerated);
         
         // Update indicators list
-        this.updateIndicatorsList(analysis.indicators);
+        this.updateIndicatorsList(analysis.indicators || []);
         
         // Show URL preview
         this.showUrlPreview(url);
@@ -1245,7 +1304,84 @@ class DeepfakeScanner {
         }
         
         // Update detailed analysis tabs
-        this.updateDetailedAnalysis(analysis.raw_results, analysis);
+        // Structure results similar to file upload format
+        const results = {
+            ml_result: analysis.ml_result || null,
+            sightengine_result: analysis.sightengine_result || null,
+            ...(analysis.raw_results || {})
+        };
+        this.updateDetailedAnalysis(results, analysis);
+    }
+    
+    /**
+     * Combine SightEngine and ML results for URL analysis
+     */
+    combineResultsForUrl(sightEngineAnalysis, mlResult, isImage) {
+        // Start with SightEngine analysis as base
+        const combined = JSON.parse(JSON.stringify(sightEngineAnalysis)); // Deep copy
+        
+        // If ML result is not available (or not an image), return SightEngine only
+        if (!mlResult || !mlResult.success || !isImage) {
+            combined.method = 'sightengine_only';
+            combined.ml_result = null;
+            return combined;
+        }
+        
+        // Extract ML probabilities
+        const mlProbabilities = mlResult.probabilities || {};
+        const mlAIScore = mlProbabilities.ai || 0;
+        const mlHumanScore = mlProbabilities.human || 0;
+        const mlLabel = mlResult.label || 0;
+        const mlConfidence = mlResult.confidence || 0;
+        
+        // Extract SightEngine scores
+        const seAIScore = combined.ai_generated_score || 
+                         (combined.is_ai_generated ? 0.7 : 0.3) || 0;
+        const seDeepfakeScore = combined.deepfake_score || 
+                               (combined.is_deepfake ? 0.7 : 0.3) || 0;
+        const seConfidence = combined.confidence_score || 0;
+        
+        // Calculate weighted combined scores
+        const combinedAIScore = (seAIScore * 0.6) + (mlAIScore * 0.4);
+        const combinedConfidence = (seConfidence * 0.6) + (mlConfidence * 0.4);
+        
+        // Determine if AI-generated
+        const isAIGenerated = combinedAIScore > 0.5;
+        
+        // Update analysis
+        combined.is_ai_generated = isAIGenerated;
+        combined.ai_generated_score = combinedAIScore;
+        combined.confidence_score = combinedConfidence;
+        combined.method = 'combined_sightengine_ml';
+        
+        // Add ML-specific data (preserve all fields from ML result including raw_outputs)
+        combined.ml_result = {
+            success: mlResult.success !== undefined ? mlResult.success : true,
+            label: mlLabel,
+            label_name: mlResult.label_name || (mlLabel === 1 ? 'AI-generated' : 'Human-generated'),
+            confidence: mlConfidence,
+            probabilities: mlProbabilities,
+            raw_outputs: mlResult.raw_outputs || {}
+        };
+        
+        // Add SightEngine-specific data
+        combined.sightengine_result = {
+            ai_generated_score: seAIScore,
+            deepfake_score: seDeepfakeScore,
+            confidence_score: seConfidence,
+            is_ai_generated: combined.is_ai_generated || false,
+            is_deepfake: combined.is_deepfake || false
+        };
+        
+        // Update indicators
+        const indicators = combined.indicators || [];
+        if (mlResult.success) {
+            indicators.push(`ML Model: ${mlResult.label_name} (${Math.round(mlConfidence * 100)}% confidence)`);
+            indicators.push(`Combined Analysis: ${isAIGenerated ? 'AI-Generated' : 'Human-Generated'} (${Math.round(combinedAIScore * 100)}% AI probability)`);
+        }
+        combined.indicators = indicators;
+        
+        return combined;
     }
     
     updateAuthenticityIndicator(analysis) {
@@ -1703,6 +1839,255 @@ class DeepfakeScanner {
         html += `<div class="info-item"><span class="info-label">Analysis Time:</span><span class="info-value">${new Date().toLocaleString()}</span></div>`;
         html += `<div class="info-item"><span class="info-label">Models Used:</span><span class="info-value">AI Detection, Technical Analysis</span></div>`;
         html += `<div class="info-item"><span class="info-label">API Version:</span><span class="info-value">Sightengine v1.0</span></div>`;
+        html += `</div>`;
+        html += '</div>';
+        
+        return html;
+    }
+    
+    /**
+     * Combine SightEngine and ML results with weighted average
+     * 60% SightEngine, 40% ML
+     */
+    combineResults(sightEngineDetection, mlResult, isImage) {
+        // Start with SightEngine results as base
+        const combined = JSON.parse(JSON.stringify(sightEngineDetection)); // Deep copy
+        
+        // If ML result is not available (or not an image), return SightEngine only
+        if (!mlResult || !mlResult.success || !isImage) {
+            combined.analysis.method = 'sightengine_only';
+            combined.ml_result = null;
+            return combined;
+        }
+        
+        // Extract ML probabilities
+        const mlProbabilities = mlResult.probabilities || {};
+        const mlAIScore = mlProbabilities.ai || 0;
+        const mlHumanScore = mlProbabilities.human || 0;
+        const mlLabel = mlResult.label || 0; // 0 = human, 1 = AI
+        const mlConfidence = mlResult.confidence || 0;
+        
+        // Extract SightEngine scores
+        const seAnalysis = combined.analysis || {};
+        const seAIScore = seAnalysis.ai_generated_score || 
+                          (seAnalysis.is_ai_generated ? 0.7 : 0.3) || 0;
+        const seDeepfakeScore = seAnalysis.deepfake_score || 
+                               (seAnalysis.is_deepfake ? 0.7 : 0.3) || 0;
+        const seConfidence = seAnalysis.confidence_score || 0;
+        
+        // Calculate weighted combined scores
+        // For AI-generated score: 60% SightEngine + 40% ML
+        const combinedAIScore = (seAIScore * 0.6) + (mlAIScore * 0.4);
+        
+        // For overall confidence: weighted average
+        const combinedConfidence = (seConfidence * 0.6) + (mlConfidence * 0.4);
+        
+        // Determine if AI-generated (threshold: 0.5)
+        const isAIGenerated = combinedAIScore > 0.5;
+        
+        // Update analysis object
+        combined.analysis = combined.analysis || {};
+        combined.analysis.is_ai_generated = isAIGenerated;
+        combined.analysis.ai_generated_score = combinedAIScore;
+        combined.analysis.confidence_score = combinedConfidence;
+        combined.analysis.method = 'combined_sightengine_ml';
+        
+        // Add ML-specific data (preserve all fields from ML result including raw_outputs)
+        combined.ml_result = {
+            success: mlResult.success !== undefined ? mlResult.success : true,
+            label: mlLabel,
+            label_name: mlResult.label_name || (mlLabel === 1 ? 'AI-generated' : 'Human-generated'),
+            confidence: mlConfidence,
+            probabilities: mlProbabilities,
+            raw_outputs: mlResult.raw_outputs || {}
+        };
+        
+        // Add SightEngine-specific data
+        combined.sightengine_result = {
+            ai_generated_score: seAIScore,
+            deepfake_score: seDeepfakeScore,
+            confidence_score: seConfidence,
+            is_ai_generated: seAnalysis.is_ai_generated || false,
+            is_deepfake: seAnalysis.is_deepfake || false
+        };
+        
+        // Update indicators to include ML information
+        const indicators = combined.analysis.indicators || [];
+        if (mlResult.success) {
+            indicators.push(`ML Model: ${mlResult.label_name} (${Math.round(mlConfidence * 100)}% confidence)`);
+            indicators.push(`Combined Analysis: ${isAIGenerated ? 'AI-Generated' : 'Human-Generated'} (${Math.round(combinedAIScore * 100)}% AI probability)`);
+        }
+        combined.analysis.indicators = indicators;
+        
+        return combined;
+    }
+    
+    /**
+     * Format Machine Learning Analysis tab content
+     */
+    formatMachineLearningAnalysis(results, analysis) {
+        let html = '';
+        
+        // Check if ML result is available
+        if (!results.ml_result) {
+            html += '<div class="analysis-item">';
+            html += '<div class="alert alert-info">';
+            html += '<strong>ℹ️ Machine Learning Analysis Not Available</strong>';
+            html += '<p>ML detection is only available for images. Videos are analyzed using SightEngine only.</p>';
+            html += '</div>';
+            html += '</div>';
+            return html;
+        }
+        
+        const mlResult = results.ml_result;
+        
+        // ML Detection Results Section
+        html += '<div class="analysis-item">';
+        html += '<h4>🧠 Machine Learning Model Analysis</h4>';
+        
+        html += `<div class="score-display">`;
+        html += `<div class="score-item ${mlResult.label === 1 ? 'warning' : 'success'}">`;
+        html += `<span class="score-label">ML Prediction:</span>`;
+        html += `<span class="score-value">${mlResult.label_name || 'Unknown'}</span>`;
+        html += `</div>`;
+        html += `<div class="score-item">`;
+        html += `<span class="score-label">ML Confidence:</span>`;
+        html += `<span class="score-value">${Math.round(mlResult.confidence * 100)}%</span>`;
+        html += `</div>`;
+        html += `</div>`;
+        
+        if (mlResult.label === 1) {
+            html += `<div class="alert alert-warning">`;
+            html += `<strong>⚠️ AI-Generated Content Detected by ML Model</strong>`;
+            html += `<p>The machine learning model has classified this image as AI-generated with ${Math.round(mlResult.confidence * 100)}% confidence.</p>`;
+            html += `</div>`;
+        } else {
+            html += `<div class="alert alert-success">`;
+            html += `<strong>✓ Human-Generated Content</strong>`;
+            html += `<p>The machine learning model has classified this image as human-generated with ${Math.round(mlResult.confidence * 100)}% confidence.</p>`;
+            html += `</div>`;
+        }
+        
+        html += '</div>';
+        
+        // Probability Breakdown
+        html += '<div class="analysis-item">';
+        html += '<h4>📊 Probability Breakdown</h4>';
+        html += `<div class="probability-breakdown">`;
+        
+        const humanProb = mlResult.probabilities?.human || 0;
+        const aiProb = mlResult.probabilities?.ai || 0;
+        
+        html += `<div class="prob-item">`;
+        html += `<div class="prob-header">`;
+        html += `<span class="prob-label">Human-Generated:</span>`;
+        html += `<span class="prob-value">${Math.round(humanProb * 100)}%</span>`;
+        html += `</div>`;
+        html += `<div class="prob-bar">`;
+        html += `<div class="prob-fill human" style="width: ${humanProb * 100}%"></div>`;
+        html += `</div>`;
+        html += `</div>`;
+        
+        html += `<div class="prob-item">`;
+        html += `<div class="prob-header">`;
+        html += `<span class="prob-label">AI-Generated:</span>`;
+        html += `<span class="prob-value">${Math.round(aiProb * 100)}%</span>`;
+        html += `</div>`;
+        html += `<div class="prob-bar">`;
+        html += `<div class="prob-fill ai" style="width: ${aiProb * 100}%"></div>`;
+        html += `</div>`;
+        html += `</div>`;
+        
+        html += `</div>`;
+        html += '</div>';
+        
+        // Raw Model Outputs (if available)
+        if (mlResult.raw_outputs && (mlResult.raw_outputs.human !== undefined || mlResult.raw_outputs.ai !== undefined)) {
+            html += '<div class="analysis-item">';
+            html += '<h4>🔬 Raw Model Outputs (Logits)</h4>';
+            html += `<div class="raw-outputs">`;
+            
+            const humanLogit = mlResult.raw_outputs.human;
+            const aiLogit = mlResult.raw_outputs.ai;
+            
+            html += `<div class="output-item">`;
+            html += `<span class="output-label">Human logit:</span>`;
+            html += `<span class="output-value">${humanLogit !== undefined ? humanLogit.toFixed(6) : 'N/A'}</span>`;
+            html += `</div>`;
+            html += `<div class="output-item">`;
+            html += `<span class="output-label">AI logit:</span>`;
+            html += `<span class="output-value">${aiLogit !== undefined ? aiLogit.toFixed(6) : 'N/A'}</span>`;
+            html += `</div>`;
+            
+            // Show the difference
+            if (humanLogit !== undefined && aiLogit !== undefined) {
+                const logitDiff = aiLogit - humanLogit;
+                html += `<div class="output-item">`;
+                html += `<span class="output-label">Logit Difference (AI - Human):</span>`;
+                html += `<span class="output-value ${logitDiff > 0 ? 'ai-highlight' : 'human-highlight'}">${logitDiff.toFixed(6)}</span>`;
+                html += `</div>`;
+            }
+            
+            html += `</div>`;
+            html += '<p class="tech-note"><small>Raw outputs are logits (pre-softmax values) from the model. Higher values indicate stronger prediction. The model outputs these raw values before applying softmax to get probabilities.</small></p>';
+            html += '</div>';
+        }
+        
+        // Show full JSON output for debugging/transparency
+        html += '<div class="analysis-item">';
+        html += '<h4>📋 Complete ML Model Response</h4>';
+        html += `<div class="json-output">`;
+        html += `<pre class="json-display">${JSON.stringify(mlResult, null, 2)}</pre>`;
+        html += `</div>`;
+        html += '</div>';
+        
+        // Combined Analysis Section
+        if (results.sightengine_result) {
+            html += '<div class="analysis-item">';
+            html += '<h4>⚖️ Combined Analysis (Weighted)</h4>';
+            
+            const seResult = results.sightengine_result;
+            const combinedAIScore = analysis.ai_generated_score || 0;
+            
+            html += `<div class="combined-breakdown">`;
+            html += `<div class="breakdown-item">`;
+            html += `<div class="breakdown-header">`;
+            html += `<span class="breakdown-label">SightEngine Score:</span>`;
+            html += `<span class="breakdown-value">${Math.round(seResult.ai_generated_score * 100)}%</span>`;
+            html += `<span class="breakdown-weight">(60% weight)</span>`;
+            html += `</div>`;
+            html += `</div>`;
+            
+            html += `<div class="breakdown-item">`;
+            html += `<div class="breakdown-header">`;
+            html += `<span class="breakdown-label">ML Model Score:</span>`;
+            html += `<span class="breakdown-value">${Math.round(aiProb * 100)}%</span>`;
+            html += `<span class="breakdown-weight">(40% weight)</span>`;
+            html += `</div>`;
+            html += `</div>`;
+            
+            html += `<div class="breakdown-item combined">`;
+            html += `<div class="breakdown-header">`;
+            html += `<span class="breakdown-label">Final Combined Score:</span>`;
+            html += `<span class="breakdown-value">${Math.round(combinedAIScore * 100)}%</span>`;
+            html += `</div>`;
+            html += `<div class="breakdown-formula">`;
+            html += `<small>(${Math.round(seResult.ai_generated_score * 100)}% × 0.6) + (${Math.round(aiProb * 100)}% × 0.4) = ${Math.round(combinedAIScore * 100)}%</small>`;
+            html += `</div>`;
+            html += `</div>`;
+            
+            html += `</div>`;
+            html += '</div>';
+        }
+        
+        // Model Information
+        html += '<div class="analysis-item">';
+        html += '<h4>ℹ️ Model Information</h4>';
+        html += `<div class="model-info">`;
+        html += `<div class="info-item"><span class="info-label">Model Architecture:</span><span class="info-value">EfficientNetV2-S</span></div>`;
+        html += `<div class="info-item"><span class="info-label">Input Size:</span><span class="info-value">384×384 pixels</span></div>`;
+        html += `<div class="info-item"><span class="info-label">Framework:</span><span class="info-value">PyTorch (timm)</span></div>`;
+        html += `<div class="info-item"><span class="info-label">Analysis Method:</span><span class="info-value">${analysis.method || 'combined_sightengine_ml'}</span></div>`;
         html += `</div>`;
         html += '</div>';
         
