@@ -20,15 +20,15 @@ A comprehensive cybersecurity platform featuring state-of-the-art **deepfake rec
 
 ## Overview
 
-The PETRONAS Cybercrime Platform is a PHP-based web application designed to help combat cybercrime in Malaysia, with a **primary focus on deepfake recognition and detection**. The platform leverages advanced AI technology to identify and analyze deepfake content in images and videos.
+The PETRONAS Cybercrime Platform is a Python Flask-based web application designed to help combat cybercrime in Malaysia, with a **primary focus on deepfake recognition and detection**. The platform leverages a **dual detection system** combining Sightengine API (60% weight) and Machine Learning (40% weight) to identify and analyze deepfake content in images and videos with enhanced accuracy.
 
 ### Key Capabilities
 
-- **🎯 Deepfake Recognition**: Advanced AI-powered detection of AI-generated and deepfake content in images and videos
-- **📊 Real-time Analysis**: Instant deepfake detection with confidence scoring and detailed technical analysis
-- **🔍 Multi-format Support**: Analyze images (JPEG, PNG, GIF, WebP, BMP) and videos (MP4, AVI, MOV, WMV)
+- **🎯 Deepfake Recognition**: Advanced dual-system detection combining Sightengine API (60%) and Machine Learning (40%) for AI-generated and deepfake content in images and videos
+- **📊 Real-time Analysis**: Instant deepfake detection with weighted confidence scoring and detailed technical analysis
+- **🔍 Multi-format Support**: Analyze images (JPEG, PNG, GIF, WebP, BMP) with dual detection, videos (MP4, AVI, MOV, WMV) with Sightengine
 - **🌐 URL & Upload Support**: Analyze media from file uploads or direct URLs
-- **📈 Comprehensive Reporting**: Detailed analysis reports with authenticity scores and indicators
+- **📈 Comprehensive Reporting**: Detailed analysis reports with weighted scores, individual system results, and authenticity indicators
 
 ### Additional Features
 
@@ -43,34 +43,75 @@ The PETRONAS Cybercrime Platform is a PHP-based web application designed to help
 
 **Deepfake Scanner** (`deepfake-scanner.php`) - **The Platform's Core Feature**
 
-The platform's flagship feature is its advanced deepfake recognition system, powered by Sightengine's state-of-the-art AI detection models.
+The platform's flagship feature is its advanced deepfake recognition system, utilizing a **dual detection approach** that combines **Sightengine API** and **Machine Learning (PyTorch)** for enhanced accuracy and reliability.
+
+#### Dual Detection System with Weighted Scoring
+
+The platform employs a sophisticated **weighted combination** of two detection methods:
+
+- **🔵 Sightengine API (60% weight)**
+  - Industry-leading cloud-based deepfake detection
+  - Supports both images and videos
+  - Uses `genai` model for AI-generated content detection
+  - Uses `deepfake` model for specialized face-swapping detection (images only)
+  - Real-time analysis with high accuracy
+
+- **🟢 Machine Learning Model (40% weight)**
+  - Local PyTorch-based AI detection model
+  - Trained on extensive dataset for AI vs Human classification
+  - Available for images only (JPEG, PNG, GIF, WebP, BMP)
+  - Provides additional validation layer
+  - Runs locally for privacy-sensitive content
+
+**Combined Scoring Formula:**
+```
+Final AI Probability = (SightEngine Score × 0.6) + (ML Score × 0.4)
+Final Confidence = (SightEngine Confidence × 0.6) + (ML Confidence × 0.4)
+```
+
+**Benefits of Dual Detection:**
+- ✅ **Higher Accuracy**: Cross-validation between two independent systems
+- ✅ **Reduced False Positives**: ML model provides additional verification
+- ✅ **Flexible Fallback**: If ML unavailable, SightEngine-only analysis is performed
+- ✅ **Privacy Options**: ML runs locally, reducing data transmission
+- ✅ **Comprehensive Coverage**: SightEngine handles videos, ML enhances image analysis
 
 #### Deepfake Detection Capabilities
 
 - **✅ Image Deepfake Detection**
-  - Detects AI-generated images with high accuracy
+  - **Dual Analysis**: Combines Sightengine API (60%) + ML Model (40%)
+  - Detects AI-generated images with enhanced accuracy
   - Identifies deepfake faces and manipulated content
   - Supports JPEG, PNG, GIF, WebP, BMP formats
-  - Confidence scoring (0-100%) for authenticity assessment
+  - Weighted confidence scoring (0-100%) for authenticity assessment
+  - Detailed breakdown showing individual scores and combined result
 
 - **✅ Video Deepfake Detection**
+  - **Sightengine Only**: Videos analyzed using Sightengine API (100%)
   - Analyzes video files frame-by-frame for AI-generated content
   - Detects deepfake videos and synthetic media
   - Supports MP4, AVI, MOV, WMV formats
   - Frame-level analysis for comprehensive detection
+  - Note: ML model supports images only
 
 - **✅ Dual Analysis Methods**
   - **File Upload**: Direct upload from device
   - **URL Analysis**: Analyze media from web URLs
   - Automatic format detection and processing
+  - Automatic method selection (combined for images, SightEngine-only for videos)
 
 - **✅ Comprehensive Analysis Reports**
+  - **Combined Analysis Section**: Shows weighted breakdown
+    - SightEngine score with 60% weight
+    - ML score with 40% weight (images only)
+    - Final combined score calculation
   - AI-generated content detection score
   - Deepfake confidence percentage
-  - Detailed technical indicators
+  - Detailed technical indicators from both systems
   - Authenticity assessment
   - Multiple analysis tabs:
     - General analysis overview
+    - Combined weighted analysis breakdown
     - Face analysis (for images)
     - Text content analysis
     - Technical details and metadata
@@ -84,28 +125,31 @@ The platform's flagship feature is its advanced deepfake recognition system, pow
 #### Technical Specifications
 
 - **Detection Models**: 
-  - `genai` - AI-generated content detection (images & videos)
-  - `deepfake` - Deepfake-specific detection (images only)
-- **Accuracy**: High-precision detection with confidence scoring
+  - **Sightengine API**:
+    - `genai` - AI-generated content detection (images & videos)
+    - `deepfake` - Deepfake-specific detection (images only)
+  - **Machine Learning**:
+    - PyTorch-based custom model (`best_model.pth`)
+    - EfficientNet architecture with transfer learning
+    - Trained for AI vs Human image classification
+- **Weightage Distribution**:
+  - Images: 60% SightEngine + 40% ML
+  - Videos: 100% SightEngine (ML not applicable)
+- **Accuracy**: Enhanced precision through dual-system validation
 - **Processing Speed**: Real-time analysis for images, frame-by-frame for videos
 - **Rate Limiting**: 10 scans per 5 minutes per user
 
 ### Additional Core Features
 
-1. **Public Dashboard** (`public-dashboard.php`)
-   - Scammer database search (phone, email, bank account, website)
-   - Data breach checking via HaveIBeenPwned API
-   - Statistics dashboard
-   - Safety education resources
 
-3. **Incident Reporting** (`report-incident.php`)
+2. **Incident Reporting** (`report-incident.php`)
    - Multiple incident types (Phishing, Scam, Deepfake, etc.)
    - Evidence file upload
    - Automatic deepfake detection
    - OSINT threat matching
    - Priority assignment
 
-4. **OSINT Monitor** (`osint-monitor.php`)
+3. **OSINT Monitor** (`osint-monitor.php`)
    - Interactive Malaysia threat map
    - Threat trend visualization
    - Real-time statistics
@@ -115,36 +159,27 @@ The platform's flagship feature is its advanced deepfake recognition system, pow
      - Username Checker (Mr.Holmes)
      - Breach Checker (HaveIBeenPwned)
 
-5. **Investigation Dashboard** (Requires login)
-   - Case management
-   - Evidence collection
-   - Investigation notes
-   - Activity timeline
-   - Query saving
 
 ## System Requirements
 
 ### Server Requirements
 
-- **PHP**: 7.4+ (Recommended: PHP 8.1+)
-- **Web Server**: Apache 2.4+ or Nginx 1.18+
-- **Database**: MySQL 5.7+ or MariaDB 10.3+ (Optional - platform uses mock data)
-- **PHP Extensions**:
-  - cURL (for API calls)
-  - JSON
-  - GD or ImageMagick (for image processing)
-  - OpenSSL
-  - mbstring
+- **Python**: 3.7+ (Recommended: Python 3.9+)
+- **Web Server**: Gunicorn (production) or Flask development server
+- **Database**: Not required (platform uses mock data)
+- **Python Packages**:
+  - Flask 2.3.0+
+  - requests 2.31.0+
+  - Werkzeug 2.3.0+
+  - gunicorn 21.2.0+ (for production)
+  - PyTorch 2.0.0+ (for ML detection - optional but recommended)
+  - torchvision, timm, albumentations, Pillow, numpy (for ML model)
 
-### PHP Configuration
+### Python Configuration
 
-```ini
-upload_max_filesize = 50M
-post_max_size = 50M
-max_execution_time = 300
-memory_limit = 256M
-session.gc_maxlifetime = 3600
-```
+- **File Upload Limit**: 50MB (configured in Flask app)
+- **Session Timeout**: 3600 seconds (1 hour)
+- **ML Model**: `best_model.pth` (required for dual detection, optional for Sightengine-only)
 
 ### Browser Support
 
@@ -163,10 +198,11 @@ session.gc_maxlifetime = 3600
    cd petronas-cybercrime-platform
    ```
 
-2. **Configure web server**
-   - Point document root to project directory
-   - Ensure mod_rewrite is enabled (Apache)
-   - Set proper file permissions
+2. **Set up Python virtual environment** (recommended)
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
 
 3. **Configure API keys** (see Configuration section)
 
@@ -178,10 +214,11 @@ session.gc_maxlifetime = 3600
    chmod 755 uploads uploads/deepfake_scans uploads/evidence uploads/test_ai_detection
    ```
 
-5. **Install Python dependencies** (for ML model)
+5. **Install Python dependencies** (for ML model - required for dual detection)
    ```bash
    pip install -r requirements.txt
    ```
+   **Note**: ML model is optional but recommended. If not available, the platform will use Sightengine-only detection (100% weight instead of 60%).
 
 ### Deploy to Render
 
@@ -191,16 +228,17 @@ session.gc_maxlifetime = 3600
    - Connect your repository: `EricSyamir/petronascybersec`
 
 2. **Configure service settings:**
-   - **Environment**: PHP
+   - **Environment**: Python (Flask)
    - **Region**: Singapore (or closest to users)
    - **Build Command**: 
      ```bash
-     mkdir -p uploads/deepfake_scans uploads/evidence uploads/test_ai_detection && chmod -R 755 uploads && python3 -m pip install --user -r requirements.txt || true
+     mkdir -p uploads/deepfake_scans uploads/evidence uploads/test_ai_detection templates && pip install -r requirements.txt && pip install gunicorn
      ```
    - **Start Command**: 
      ```bash
-     php -S 0.0.0.0:$PORT -t .
+     gunicorn --bind 0.0.0.0:$PORT app:app
      ```
+   **Note**: The platform now runs on Python Flask. ML model dependencies are included in requirements.txt for dual detection support.
 
 3. **Set environment variables:**
    - `SIGHTENGINE_API_USER`: Your Sightengine API user
@@ -292,28 +330,7 @@ GET api/scammer-search.php?action=search&q=test@example.com&type=email
 }
 ```
 
-#### 3. Add Scammer API
-**Endpoint**: `api/add-scammer.php`  
-**Method**: POST  
-**Content-Type**: application/json
-
-**Request Body**:
-```json
-{
-  "scam_type": "phishing",
-  "description": "Fake bank email scam",
-  "scammer_email": "scammer@example.com",
-  "scammer_phone": "012-345-6789",
-  "scammer_website": "fake-bank.com",
-  "threat_level": "high",
-  "verification_status": "unverified"
-}
-```
-
-**Valid Scam Types**: `phishing`, `romance`, `investment`, `lottery`, `job`, `shopping`, `cryptocurrency`, `other`  
-**Valid Threat Levels**: `low`, `medium`, `high`, `critical`
-
-#### 4. Sightengine API Wrapper
+#### 3. Sightengine API Wrapper
 **Endpoint**: `api/sightengine.php`  
 **Method**: POST
 
@@ -346,7 +363,7 @@ media=[file]
 
 **Rate Limiting**: 10 scans per 5 minutes per user
 
-#### 5. OSINT Collector API
+#### 4. OSINT Collector API
 **Endpoint**: `api/osint-collector.php`  
 **Method**: POST
 
@@ -376,7 +393,7 @@ offset=0
 }
 ```
 
-#### 6. OSINT Tools API
+#### 5. OSINT Tools API
 **Endpoint**: `api/osint-tools.php`  
 **Method**: POST
 
@@ -411,29 +428,6 @@ email=test@example.com
 }
 ```
 
-#### 7. Investigation API
-**Endpoint**: `api/investigation.php`  
-**Method**: POST  
-**Authentication**: Required (Investigator/Admin role)
-
-**Actions**:
-- `create_case`: Create investigation case
-- `get_cases`: Get list of cases
-- `get_case`: Get case details
-- `save_query`: Save OSINT query
-- `add_evidence`: Add evidence to case
-- `add_note`: Add note to case
-- `get_timeline`: Get case activity timeline
-- `update_status`: Update case status
-
-**Request** (create_case):
-```
-POST api/investigation.php
-action=create_case
-title=Phishing Investigation
-description=Investigating phishing campaign
-priority=high
-```
 
 ## Usage
 
@@ -448,16 +442,6 @@ priority=high
 3. **Report Incident**: Submit cybercrime reports at `report-incident.php` (includes automatic deepfake detection)
 4. **OSINT Monitor**: Access OSINT tools at `osint-monitor.php`
 
-### Authenticated Access
-
-**Default Accounts** (Change in production):
-- Admin: `admin` / `admin123`
-- Investigator: `investigator` / `investigator123`
-
-Login at `login.php` to access:
-- Investigation dashboard
-- Case management
-- Evidence collection
 
 ## Chrome Extension
 
@@ -484,16 +468,17 @@ Login at `login.php` to access:
 
 ## External APIs
 
-### Sightengine API (Primary Deepfake Recognition Engine)
+### Sightengine API (Primary Deepfake Recognition Engine - 60% Weight)
 
-**Purpose**: **Advanced AI-generated content and deepfake detection** - The core technology powering the platform's deepfake recognition feature  
+**Purpose**: **Advanced AI-generated content and deepfake detection** - Primary component (60% weight) of the platform's dual deepfake recognition system  
 **Status**: ✅ Active  
 **Endpoint**: `https://api.sightengine.com/1.0/check.json`  
 **Models**: 
 - `genai` - AI-generated content detection (works for both images and videos)
 - `deepfake` - Specialized deepfake detection (images only, provides enhanced accuracy for face-swapping and manipulation detection)  
 **Rate Limit**: Subject to subscription tier  
-**Cost**: Pay-per-use
+**Cost**: Pay-per-use  
+**Weight in Combined Analysis**: 60%
 
 **Deepfake Recognition Capabilities**:
 - Detects AI-generated images with high precision
@@ -501,12 +486,43 @@ Login at `login.php` to access:
 - Analyzes video files frame-by-frame for synthetic content
 - Provides confidence scores for authenticity assessment
 - Supports multiple image and video formats
+- Primary detection method for videos (100% weight)
 
 **Integration Points**:
 - `api/sightengine.php` - Main deepfake detection API wrapper
-- `deepfake-scanner.php` - Primary deepfake recognition interface
+- `deepfake-scanner.php` - Primary deepfake recognition interface (60% weight in combined analysis)
 - `report-incident.php` - Automatic deepfake detection in incident reports
 - Chrome Extension - Browser-based deepfake scanning
+
+### Machine Learning Model (Secondary Deepfake Recognition - 40% Weight)
+
+**Purpose**: **Local AI detection model** - Secondary component (40% weight) providing additional validation layer  
+**Status**: ✅ Active (Images only)  
+**Model File**: `best_model.pth`  
+**Framework**: PyTorch  
+**Architecture**: EfficientNet with transfer learning  
+**Weight in Combined Analysis**: 40% (Images only)  
+**API Endpoint**: `api/ai_detection.php`
+
+**Deepfake Recognition Capabilities**:
+- Local PyTorch-based AI vs Human image classification
+- Trained on extensive dataset for high accuracy
+- Provides privacy-preserving local analysis option
+- Cross-validates with Sightengine results for enhanced reliability
+- Supports JPEG, PNG, GIF, WebP, BMP formats
+- **Note**: Only available for images (videos use Sightengine only)
+
+**Integration Points**:
+- `api/ai_detection.php` - ML detection API endpoint
+- `includes/ai_detection_tester.php` - ML detection class
+- `ai_detection_inference.py` - Python inference script
+- `deepfake-scanner.js` - Client-side combination logic (40% weight)
+- Combined with Sightengine results for final weighted score
+
+**Requirements**:
+- Python 3.7+ with PyTorch installed
+- Model file: `best_model.pth`
+- Dependencies: torch, torchvision, timm, albumentations, Pillow, numpy
 
 ### HaveIBeenPwned API
 
