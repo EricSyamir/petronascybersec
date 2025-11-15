@@ -4568,6 +4568,243 @@ article.preview-card .card-content {
 }
 
 /* ============================================================
+   ERROR LEVEL ANALYSIS (ELA) STYLES
+   ============================================================ */
+
+.ela-analysis-section {
+    margin-top: var(--space-xxl);
+    padding: var(--space-xl);
+    background: rgba(0, 31, 63, 0.4);
+    border: 1px solid rgba(0, 161, 156, 0.2);
+    border-radius: var(--radius-lg);
+}
+
+.ela-analysis-section .analysis-header h3 {
+    color: var(--petronas-white);
+    margin-bottom: var(--space-sm);
+    font-size: 1.5rem;
+}
+
+.ela-analysis-section .section-description {
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: var(--space-lg);
+}
+
+.ela-status-card {
+    background: rgba(0, 31, 63, 0.6);
+    border-radius: var(--radius-md);
+    padding: var(--space-lg);
+    margin-bottom: var(--space-lg);
+    border: 2px solid rgba(0, 161, 156, 0.3);
+}
+
+.ela-status-card.suspicious {
+    border-color: rgba(255, 193, 7, 0.5);
+    background: rgba(255, 193, 7, 0.05);
+}
+
+.ela-status-card.normal {
+    border-color: rgba(0, 161, 156, 0.5);
+}
+
+.ela-status-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-md);
+    padding-bottom: var(--space-md);
+    border-bottom: 1px solid rgba(0, 161, 156, 0.2);
+}
+
+.ela-status-header h4 {
+    margin: 0;
+    color: var(--petronas-white);
+    font-size: 1.25rem;
+}
+
+.ela-confidence {
+    color: var(--petronas-teal);
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.ela-statistics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-md);
+    margin-bottom: var(--space-md);
+}
+
+.ela-stat-item {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--space-sm) var(--space-md);
+    background: rgba(0, 161, 156, 0.1);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(0, 161, 156, 0.2);
+}
+
+.ela-stat-item .stat-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.875rem;
+}
+
+.ela-stat-item .stat-value {
+    color: var(--petronas-white);
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+}
+
+.ela-warning {
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: var(--radius-sm);
+    padding: var(--space-md);
+    margin-top: var(--space-md);
+}
+
+.ela-warning p {
+    margin: 0;
+    color: var(--petronas-white);
+}
+
+.ela-warning p:first-child {
+    margin-bottom: var(--space-sm);
+    font-weight: 600;
+}
+
+.ela-success {
+    background: rgba(0, 161, 156, 0.1);
+    border: 1px solid rgba(0, 161, 156, 0.3);
+    border-radius: var(--radius-sm);
+    padding: var(--space-md);
+    margin-top: var(--space-md);
+}
+
+.ela-success p {
+    margin: 0;
+    color: var(--petronas-white);
+}
+
+.ela-visualization-container {
+    margin-top: var(--space-lg);
+}
+
+.ela-images-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-lg);
+    margin-top: var(--space-md);
+}
+
+.ela-image-item {
+    background: rgba(0, 31, 63, 0.6);
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
+    border: 1px solid rgba(0, 161, 156, 0.2);
+}
+
+.ela-image-item h5 {
+    margin: 0 0 var(--space-sm) 0;
+    color: var(--petronas-teal);
+    font-size: 1rem;
+}
+
+.ela-image {
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid rgba(0, 161, 156, 0.3);
+}
+
+.ela-image:hover {
+    transform: scale(1.02);
+    box-shadow: var(--glow-teal);
+}
+
+.ela-image-caption {
+    margin: var(--space-sm) 0 0 0;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+.ela-image-modal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(10px);
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.ela-modal-content {
+    position: relative;
+    max-width: 90%;
+    max-height: 90%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.ela-modal-image {
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: var(--radius-md);
+    box-shadow: var(--glow-teal);
+    border: 2px solid var(--petronas-teal);
+}
+
+.ela-modal-close {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    color: var(--petronas-white);
+    font-size: 2rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.3s ease;
+    z-index: 10001;
+}
+
+.ela-modal-close:hover {
+    color: var(--petronas-teal);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .ela-statistics {
+        grid-template-columns: 1fr;
+    }
+    
+    .ela-images-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .ela-status-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-sm);
+    }
+}
+
+/* ============================================================
    END OF PETRONAS MASTER STYLESHEET
    Designed for cutting-edge cybersecurity platform experience
    ============================================================ */

@@ -277,6 +277,7 @@ $baseUrl = $protocol . '://' . $host . $basePath;
                     </div>
                 </div>
 
+
                 <!-- Detailed Analysis Section -->
                 <div class="analysis-section">
                     <div class="analysis-header">
@@ -295,6 +296,10 @@ $baseUrl = $protocol . '://' . $host . $basePath;
                             <span class="tab-icon">🤖</span>
                             <span class="tab-label">Generated AI Analysis</span>
                         </button>
+                        <button class="analysis-tab" data-tab="ela" onclick="showTab('ela')" style="display: none;">
+                            <span class="tab-icon">🔍</span>
+                            <span class="tab-label">Error Level Analysis</span>
+                        </button>
                     </div>
                     
                     <div class="analysis-content">
@@ -306,6 +311,20 @@ $baseUrl = $protocol . '://' . $host . $basePath;
                         </div>
                         <div class="analysis-panel" id="ai-generatedTab">
                             <div id="aiGeneratedAnalysis"></div>
+                        </div>
+                        <div class="analysis-panel" id="elaTab">
+                            <div class="ela-tab-header">
+                                <h4>🔍 Error Level Analysis (ELA)</h4>
+                                <p class="section-description">JPEG tampering detection using compression error analysis. This technique detects inconsistencies in JPEG compression that may indicate image manipulation.</p>
+                            </div>
+                            <div class="ela-results-container" id="elaResultsContainer">
+                                <!-- ELA results will be displayed here -->
+                            </div>
+                            <div class="ela-visualization-container" id="elaVisualizationContainer" style="display: none;">
+                                <div class="ela-images-grid" id="elaImagesGrid">
+                                    <!-- ELA visualization images will be displayed here -->
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

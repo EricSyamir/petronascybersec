@@ -979,10 +979,16 @@ class DeepfakeScanner {
             this.showProgress(true);
             this.setProgress(90, 'Combining results...');
             
-            const { file, isImage, sightEngineResult, mlResult } = this.pendingAnalysis;
+            const { file, isImage, sightEngineResult, mlResult, elaResult } = this.pendingAnalysis;
             
             // Combine results based on face selection
             const combinedResult = this.combineResults(sightEngineResult.detection, mlResult, isImage);
+            
+            // Add ELA result (doesn't affect AI detection weightage, just for display)
+            combinedResult.ela_result = elaResult;
+            console.log('🔍 [ELA DEBUG] Combined result with ELA:', combinedResult);
+            console.log('🔍 [ELA DEBUG] Combined result.ela_result:', combinedResult.ela_result);
+            console.log('🔍 [ELA DEBUG] Combined result.analysis:', combinedResult.analysis);
             
             this.setProgress(100, 'Analysis complete!');
             setTimeout(() => {
@@ -1048,8 +1054,8 @@ class DeepfakeScanner {
             // Check if it's an image (for ML detection)
             const isImage = file.type.startsWith('image/');
             
-            // Call SightEngine API
-            this.setProgress(20, 'Analyzing with SightEngine...');
+            // Call SightEngine API (includes ELA analysis)
+            this.setProgress(20, 'Analyzing with AI detection and ELA...');
             const sightEngineResponse = await fetch('api/sightengine.php', {
                 method: 'POST',
                 body: formData
@@ -1104,6 +1110,26 @@ class DeepfakeScanner {
                 }
             }
             
+            // Get ELA result from SightEngine response (if available)
+            let elaResult = sightEngineResult.ela_result || null;
+            console.log('🔍 [ELA DEBUG] SightEngine response:', sightEngineResult);
+            console.log('🔍 [ELA DEBUG] SightEngine response keys:', Object.keys(sightEngineResult));
+            console.log('🔍 [ELA DEBUG] ELA result extracted:', elaResult);
+            
+            // Check for ELA error in response
+            if (sightEngineResult.ela_error) {
+                console.error('❌ [ELA DEBUG] ELA Error from server:', sightEngineResult.ela_error);
+            }
+            
+            if (elaResult) {
+                console.log('✅ [ELA DEBUG] ELA analysis completed:', elaResult);
+                console.log('✅ [ELA DEBUG] ELA output_url:', elaResult.output_url);
+                console.log('✅ [ELA DEBUG] ELA result keys:', Object.keys(elaResult));
+            } else {
+                console.warn('⚠️ [ELA DEBUG] No ELA result found in SightEngine response');
+                console.warn('⚠️ [ELA DEBUG] Check PHP error logs for ELA DEBUG messages');
+            }
+            
             // For videos, skip face selection and use 100% SightEngine
             if (!isImage) {
                 this.hasFaces = null; // Videos don't use face selection
@@ -1111,6 +1137,8 @@ class DeepfakeScanner {
                 
                 // For videos: 100% SightEngine only
                 const combinedResult = this.combineResults(sightEngineResult.detection, null, isImage);
+                combinedResult.ela_result = null; // No ELA for videos
+                console.log('🔍 [ELA DEBUG] Video detected - ELA disabled');
                 
                 this.setProgress(100, 'Analysis complete!');
                 setTimeout(() => {
@@ -1125,7 +1153,8 @@ class DeepfakeScanner {
                     file: file,
                     isImage: isImage,
                     sightEngineResult: sightEngineResult,
-                    mlResult: mlResult
+                    mlResult: mlResult,
+                    elaResult: elaResult
                 };
                 
                 // Show face detection prompt
@@ -1339,8 +1368,8 @@ class DeepfakeScanner {
         // Update indicators list
         this.updateIndicatorsList(analysis.indicators || []);
         
-        // Show media preview
-        this.showMediaPreview(file, results);
+        // Show media preview (pass analysis to include ELA mapping)
+        this.showMediaPreview(file, results, analysis);
         
         // Show warning banner and report button if AI detected
         if (analysis.is_deepfake || analysis.is_ai_generated) {
@@ -1359,6 +1388,26 @@ class DeepfakeScanner {
         
         // Update detailed analysis tabs
         this.updateDetailedAnalysis(results, analysis);
+        
+        // Display ELA results if available (check multiple possible locations)
+        console.log('🔍 [ELA DEBUG] displayResults called');
+        console.log('🔍 [ELA DEBUG] analysis object:', analysis);
+        console.log('🔍 [ELA DEBUG] detection object:', detection);
+        console.log('🔍 [ELA DEBUG] analysis.ela_result:', analysis.ela_result);
+        console.log('🔍 [ELA DEBUG] detection?.ela_result:', detection?.ela_result);
+        console.log('🔍 [ELA DEBUG] detection?.analysis?.ela_result:', detection?.analysis?.ela_result);
+        
+        const elaResult = analysis.ela_result || detection?.ela_result || detection?.analysis?.ela_result;
+        console.log('🔍 [ELA DEBUG] Final elaResult:', elaResult);
+        
+        if (elaResult) {
+            // Store ELA result in analysis object for easy access
+            analysis.ela_result = elaResult;
+            console.log('✅ [ELA DEBUG] ELA result found, calling displayELAResults');
+            this.displayELAResults(elaResult);
+        } else {
+            console.warn('⚠️ [ELA DEBUG] No ELA result found in any location');
+        }
         
         // Add to recent scans
         this.addToRecentScans(file.name, analysis, file);
@@ -1674,7 +1723,7 @@ class DeepfakeScanner {
         `;
     }
     
-    showMediaPreview(file, results) {
+    showMediaPreview(file, results, analysis = null) {
         const mediaPreview = document.getElementById('mediaPreview');
         const mediaInfo = document.getElementById('mediaInfo');
         
@@ -1716,7 +1765,8 @@ class DeepfakeScanner {
             'File Size': this.formatFileSize(file.size),
             'File Type': file.type,
             'Last Modified': new Date(file.lastModified).toLocaleDateString()
-        });
+        }, analysis);
+        
     }
     
     showUrlPreview(url) {
@@ -1757,9 +1807,10 @@ class DeepfakeScanner {
         });
     }
     
-    updateMediaInfo(container, info) {
+    updateMediaInfo(container, info, analysis = null) {
         container.innerHTML = '';
         
+        // Display file information
         Object.entries(info).forEach(([label, value]) => {
             const item = document.createElement('div');
             item.className = 'info-item';
@@ -1769,6 +1820,125 @@ class DeepfakeScanner {
             `;
             container.appendChild(item);
         });
+    }
+    
+    /**
+     * Show Combined Mapping button AND image in the preview section
+     */
+    showCombinedMappingInPreview(analysis) {
+        console.log('🔍 [ELA DEBUG] showCombinedMappingInPreview called');
+        console.log('🔍 [ELA DEBUG] analysis parameter:', analysis);
+        console.log('🔍 [ELA DEBUG] analysis?.ela_result:', analysis?.ela_result);
+        
+        const buttonSection = document.getElementById('combinedMappingButtonSection');
+        
+        if (!buttonSection) {
+            console.error('❌ [ELA DEBUG] Combined mapping button section NOT FOUND in HTML!');
+            console.error('❌ [ELA DEBUG] Looking for element with id: combinedMappingButtonSection');
+            return;
+        }
+        
+        console.log('✅ [ELA DEBUG] Button section found:', buttonSection);
+        console.log('🔍 [ELA DEBUG] Current display style:', buttonSection.style.display);
+        
+        // Check if ELA result is available
+        const elaResult = analysis?.ela_result;
+        
+        console.log('🔍 [ELA DEBUG] ELA Result check:', elaResult);
+        console.log('🔍 [ELA DEBUG] elaResult?.output_url:', elaResult?.output_url);
+        
+        if (elaResult && elaResult.output_url) {
+            console.log('✅ [ELA DEBUG] ELA result found with output_url, showing section');
+            // Clear existing content in button section
+            buttonSection.innerHTML = '';
+            buttonSection.style.display = 'block';
+            
+            // Add title/label
+            const title = document.createElement('div');
+            title.style.cssText = `
+                font-weight: 600;
+                color: var(--petronas-teal);
+                font-size: 1.1rem;
+                margin-bottom: 15px;
+                text-align: left;
+            `;
+            title.innerHTML = '🔍 Combined ELA Mapping:';
+            buttonSection.appendChild(title);
+            
+            // Add the ELA overlay image
+            const mappingImage = document.createElement('img');
+            mappingImage.src = elaResult.output_url;
+            mappingImage.alt = 'ELA Combined Mapping';
+            mappingImage.style.cssText = `
+                width: 100%;
+                max-width: 100%;
+                height: auto;
+                border-radius: 8px;
+                border: 2px solid var(--petronas-teal);
+                cursor: pointer;
+                transition: transform 0.3s ease, box-shadow 0.3s ease;
+                margin-bottom: 15px;
+            `;
+            
+            // Add hover effect
+            mappingImage.addEventListener('mouseenter', () => {
+                mappingImage.style.transform = 'scale(1.02)';
+                mappingImage.style.boxShadow = '0 0 20px rgba(0, 161, 156, 0.6), 0 0 40px rgba(0, 161, 156, 0.3)';
+            });
+            mappingImage.addEventListener('mouseleave', () => {
+                mappingImage.style.transform = 'scale(1)';
+                mappingImage.style.boxShadow = 'none';
+            });
+            
+            // Click to open in modal
+            mappingImage.addEventListener('click', () => {
+                this.openImageModal(elaResult.output_url);
+            });
+            
+            buttonSection.appendChild(mappingImage);
+            
+            // Add the button
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'btn btn-primary btn-large';
+            button.onclick = () => this.openImageModal(elaResult.output_url);
+            button.style.cssText = `
+                width: 100%;
+                padding: 15px 30px;
+                font-size: 1.1rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                margin-bottom: 10px;
+            `;
+            button.innerHTML = '<span>🔗 View Full Size Combined Mapping</span>';
+            buttonSection.appendChild(button);
+            
+            // Add description
+            const description = document.createElement('div');
+            description.style.cssText = `
+                color: rgba(255, 255, 255, 0.8);
+                font-size: 0.9rem;
+                font-style: italic;
+                text-align: center;
+            `;
+            description.textContent = 'Red areas indicate potential tampering detected by Error Level Analysis';
+            buttonSection.appendChild(description);
+            
+            console.log('✅ [ELA DEBUG] Combined mapping section populated and displayed');
+            console.log('✅ [ELA DEBUG] Image URL:', elaResult.output_url);
+            console.log('✅ [ELA DEBUG] Final display style:', buttonSection.style.display);
+            
+        } else {
+            // Hide the button section if no ELA
+            buttonSection.style.display = 'none';
+            console.warn('⚠️ [ELA DEBUG] No ELA result available - hiding section');
+            if (!elaResult) {
+                console.warn('⚠️ [ELA DEBUG] elaResult is null/undefined');
+            } else if (!elaResult.output_url) {
+                console.warn('⚠️ [ELA DEBUG] elaResult exists but output_url is missing:', elaResult);
+            }
+        }
     }
     
     showEducationBanner(isDangerous = false) {
@@ -2069,6 +2239,24 @@ class DeepfakeScanner {
         // Start with SightEngine results as base
         const combined = JSON.parse(JSON.stringify(sightEngineDetection)); // Deep copy
         
+        // Preserve ELA result if it exists in the detection
+        console.log('🔍 [ELA DEBUG] combineResults - sightEngineDetection:', sightEngineDetection);
+        console.log('🔍 [ELA DEBUG] combineResults - sightEngineDetection?.ela_result:', sightEngineDetection?.ela_result);
+        console.log('🔍 [ELA DEBUG] combineResults - sightEngineDetection?.analysis?.ela_result:', sightEngineDetection?.analysis?.ela_result);
+        
+        if (sightEngineDetection?.ela_result) {
+            combined.ela_result = sightEngineDetection.ela_result;
+            console.log('✅ [ELA DEBUG] Preserved ela_result in combined');
+        }
+        if (sightEngineDetection?.analysis?.ela_result) {
+            if (!combined.analysis) combined.analysis = {};
+            combined.analysis.ela_result = sightEngineDetection.analysis.ela_result;
+            console.log('✅ [ELA DEBUG] Preserved ela_result in combined.analysis');
+        }
+        
+        console.log('🔍 [ELA DEBUG] combineResults - final combined.ela_result:', combined.ela_result);
+        console.log('🔍 [ELA DEBUG] combineResults - final combined.analysis?.ela_result:', combined.analysis?.ela_result);
+        
         // Extract SightEngine scores
         const seAnalysis = combined.analysis || {};
         const seAIScore = seAnalysis.ai_generated_score || 
@@ -2366,6 +2554,178 @@ class DeepfakeScanner {
         html += '</div>';
         
         return html;
+    }
+    
+    /**
+     * Display Error Level Analysis results
+     */
+    displayELAResults(elaResult) {
+        const elaContainer = document.getElementById('elaResultsContainer');
+        const elaVisualization = document.getElementById('elaVisualizationContainer');
+        
+        if (!elaContainer) {
+            console.warn('ELA container element not found');
+            return;
+        }
+        
+        // Show ELA tab if it exists
+        const elaTab = document.querySelector('.analysis-tab[data-tab="ela"]');
+        if (elaTab) {
+            elaTab.style.display = 'flex'; // Show the tab button
+        }
+        
+        // Build ELA results HTML
+        const suspicious = elaResult.suspicious || false;
+        const confidenceScore = (elaResult.confidence_score || 0) * 100;
+        const suspiciousPercentage = elaResult.suspicious_percentage || 0;
+        
+        let html = `
+            <div class="ela-status-card ${suspicious ? 'suspicious' : 'normal'}">
+                <div class="ela-status-header">
+                    <h4>${suspicious ? '⚠️ Suspicious' : '✓ Normal'}</h4>
+                    <span class="ela-confidence">Confidence: ${confidenceScore.toFixed(1)}%</span>
+                </div>
+                <div class="ela-statistics">
+                    <div class="ela-stat-item">
+                        <span class="stat-label">Max Error:</span>
+                        <span class="stat-value">${(elaResult.max_error || 0).toFixed(6)}</span>
+                    </div>
+                    <div class="ela-stat-item">
+                        <span class="stat-label">Mean Error:</span>
+                        <span class="stat-value">${(elaResult.mean_error || 0).toFixed(6)}</span>
+                    </div>
+                    <div class="ela-stat-item">
+                        <span class="stat-label">Error Variance:</span>
+                        <span class="stat-value">${(elaResult.error_variance || 0).toFixed(6)}</span>
+                    </div>
+                    <div class="ela-stat-item">
+                        <span class="stat-label">Error Std Dev:</span>
+                        <span class="stat-value">${(elaResult.error_std || 0).toFixed(6)}</span>
+                    </div>
+                    <div class="ela-stat-item">
+                        <span class="stat-label">Suspicious Pixels:</span>
+                        <span class="stat-value">${(elaResult.suspicious_pixels || 0).toLocaleString()}</span>
+                    </div>
+                    <div class="ela-stat-item">
+                        <span class="stat-label">Suspicious %:</span>
+                        <span class="stat-value">${suspiciousPercentage.toFixed(2)}%</span>
+                    </div>
+                </div>
+                ${suspicious ? `
+                    <div class="ela-warning">
+                        <p><strong>⚠️ WARNING:</strong> This image shows signs of tampering!</p>
+                        <p>Indicator: ${suspiciousPercentage.toFixed(2)}% of pixels show suspicious error levels</p>
+                    </div>
+                ` : `
+                    <div class="ela-success">
+                        <p>✓ Image appears to be authentic (no significant tampering detected)</p>
+                    </div>
+                `}
+            </div>
+        `;
+        
+        elaContainer.innerHTML = html;
+        
+        // Show visualization container if images are available
+        if (elaResult.output_url) {
+            elaVisualization.style.display = 'block';
+            this.updateELAVisualization(elaResult);
+        } else {
+            elaVisualization.style.display = 'none';
+        }
+    }
+    
+    /**
+     * Update ELA visualization images
+     */
+    updateELAVisualization(elaResult) {
+        const imagesGrid = document.getElementById('elaImagesGrid');
+        if (!imagesGrid) return;
+        
+        let html = '';
+        
+        if (elaResult.output_url) {
+            html += `
+                <div class="ela-image-item">
+                    <h5>Overlay Image</h5>
+                    <img src="${elaResult.output_url}" alt="ELA Overlay" class="ela-image" onclick="window.deepfakeScanner.openImageModal('${elaResult.output_url}')">
+                    <p class="ela-image-caption">Combined original with error visualization</p>
+                </div>
+            `;
+        }
+        
+        imagesGrid.innerHTML = html;
+    }
+    
+    /**
+     * Show combined mapping visualization
+     */
+    showCombinedMapping() {
+        // Try multiple locations for ELA result
+        const elaResult = this.currentAnalysisResult?.analysis?.ela_result || 
+                         this.currentAnalysisResult?.ela_result;
+        
+        if (!elaResult) {
+            this.showAlert('Combined mapping not available. ELA analysis may not have completed.', 'warning');
+            return;
+        }
+        
+        // Use output_url (overlay image) if available
+        const imageUrl = elaResult.output_url;
+        
+        if (!imageUrl) {
+            this.showAlert('ELA visualization images not available', 'warning');
+            return;
+        }
+        
+        // Open overlay image in modal
+        this.openImageModal(imageUrl);
+    }
+    
+    /**
+     * Open image in modal
+     */
+    openImageModal(imageUrl) {
+        // Create modal if it doesn't exist
+        let modal = document.getElementById('elaImageModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'elaImageModal';
+            modal.className = 'ela-image-modal';
+            modal.innerHTML = `
+                <div class="ela-modal-content">
+                    <span class="ela-modal-close" onclick="window.deepfakeScanner.closeImageModal()">&times;</span>
+                    <img id="elaModalImage" src="" alt="ELA Visualization" class="ela-modal-image">
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            // Close on background click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    this.closeImageModal();
+                }
+            });
+        }
+        
+        // Set image source and show modal
+        const modalImage = document.getElementById('elaModalImage');
+        if (modalImage) {
+            modalImage.src = imageUrl;
+        }
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+    
+    /**
+     * Close image modal
+     */
+    closeImageModal() {
+        const modal = document.getElementById('elaImageModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
     }
     
     addToRecentScans(fileName, analysis, file) {
@@ -3134,16 +3494,24 @@ function showTab(tabName) {
     });
     
     // Show selected tab panel
-    const tabId = tabName === 'ai-generated' ? 'ai-generatedTab' : tabName + 'Tab';
+    let tabId;
+    if (tabName === 'ai-generated') {
+        tabId = 'ai-generatedTab';
+    } else if (tabName === 'ela') {
+        tabId = 'elaTab';
+    } else {
+        tabId = tabName + 'Tab';
+    }
+    
     const selectedPanel = document.getElementById(tabId);
     if (selectedPanel) {
         selectedPanel.classList.add('active');
     }
     
-    // Add active class to clicked button
-    const clickedBtn = document.querySelector(`[data-tab="${tabName}"]`);
-    if (clickedBtn) {
-        clickedBtn.classList.add('active');
+    // Add active class to selected tab button
+    const selectedTab = document.querySelector(`.analysis-tab[data-tab="${tabName}"]`);
+    if (selectedTab) {
+        selectedTab.classList.add('active');
     }
 }
 
