@@ -64,50 +64,30 @@ $baseUrl = $protocol . '://' . $host . $basePath;
 
             <!-- Upload Section -->
             <div class="scanner-section">
-                <!-- Source Information Form -->
-                <div class="source-info-form">
-                    <h3>Source Information</h3>
-                    <p class="form-description">Please fill in the source information below to enable media upload and analysis</p>
-                    
-                    <div class="form-row">
-                    <div class="form-group">
-                        <label for="userEmail">Your Email Address *</label>
-                        <input type="email" id="userEmail" class="form-input" placeholder="your.email@example.com" required>
-                        <small class="form-hint">Your contact email for this report</small>
-                    </div>
-                        
-                        <div class="form-group">
-                            <label for="sourceType">Source Type *</label>
-                            <select id="sourceType" class="form-select" required>
-                                <option value="">Select source type</option>
-                                <option value="email">Email</option>
-                                <option value="phone">Phone Number</option>
-                                <option value="social_media">Social Media</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="sourceValue" id="sourceValueLabel">Source Value *</label>
-                        <input type="text" id="sourceValue" class="form-input" placeholder="Enter email, phone number, or social media handle" required>
-                        <small class="form-hint" id="sourceHint">Enter the email address, phone number, or social media handle where you found this content</small>
-                    </div>
-                    
-                    <div class="form-submit-section">
-                        <button type="button" id="submitSourceInfo" class="btn btn-primary btn-large">
-                            <span>Submit & Continue</span>
-                        </button>
-                    </div>
-                    
-                    <div class="form-completion-status" id="formCompletionStatus" style="display: none;">
-                        <div class="completion-message">
-                            <span class="completion-icon">✅</span>
-                            <span>All fields completed! You can now upload media for analysis.</span>
-                        </div>
+                <!-- Face Detection Choice (for images only) -->
+                <div class="face-detection-choice" id="faceDetectionChoice" style="display: none;">
+                    <h3>📸 Face Detection</h3>
+                    <p class="choice-description">Does the uploaded image contain human faces?</p>
+                    <div class="choice-options">
+                        <label class="choice-option">
+                            <input type="radio" name="hasFaces" value="yes" id="hasFacesYes">
+                            <span class="option-content">
+                                <span class="option-icon">👤</span>
+                                <span class="option-label">Yes, has faces</span>
+                                <span class="option-note">Uses deepfake detection</span>
+                            </span>
+                        </label>
+                        <label class="choice-option">
+                            <input type="radio" name="hasFaces" value="no" id="hasFacesNo">
+                            <span class="option-content">
+                                <span class="option-icon">🖼️</span>
+                                <span class="option-label">No faces</span>
+                                <span class="option-note">Standard AI detection</span>
+                            </span>
+                        </label>
                     </div>
                 </div>
 
-                <div class="upload-section-wrapper" id="uploadSectionWrapper" style="display: none;">
                 <div class="upload-area" id="uploadArea" tabindex="-1">
                     <div class="upload-content">
                         <div class="upload-icon">
@@ -140,10 +120,22 @@ $baseUrl = $protocol . '://' . $host . $basePath;
                         <button type="button" onclick="analyzeUrl()" class="btn btn-secondary">Analyze URL</button>
                     </div>
                 </div>
+            </div>
+
+            <!-- Face Detection Prompt (shown after upload, before analysis) -->
+            <div class="face-detection-prompt" id="faceDetectionPrompt" style="display: none;">
+                <div class="prompt-container">
+                    <h3>Does this image contain human faces?</h3>
+                    <p>This helps us apply the most accurate detection model for your content.</p>
+                    <div class="prompt-buttons">
+                        <button type="button" class="btn btn-large btn-primary" onclick="window.deepfakeScanner.handleFaceSelection(true)">
+                            <span>👤 Yes, Contains Faces</span>
+                        </button>
+                        <button type="button" class="btn btn-large btn-secondary" onclick="window.deepfakeScanner.handleFaceSelection(false)">
+                            <span>🖼️ No Faces</span>
+                        </button>
+                    </div>
                 </div>
-                
-                <!-- Breach Results Section (for source email only) -->
-                <div id="breachResultsSection" class="breach-results-section" style="display: none;"></div>
             </div>
 
             <!-- Results Section -->
@@ -227,9 +219,61 @@ $baseUrl = $protocol . '://' . $host . $basePath;
                             <p>This content may be artificially generated. Exercise caution when sharing or believing this content.</p>
                         </div>
                         <div class="warning-actions">
+                            <button type="button" id="reportAiContentBtn" class="btn btn-primary">Report This Content</button>
                             <a href="cybersecurity-awareness.php" class="btn btn-outline">Learn More</a>
-                            <a href="report-incident.php" class="btn btn-primary">Report Content</a>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Report Form (shown when user clicks Report) -->
+                <div class="report-form-section" id="reportFormSection" style="display: none;">
+                    <div class="report-form-container">
+                        <h3>📋 Report AI-Generated Content</h3>
+                        <p class="form-description">Please provide information about where you found this content for investigation</p>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="userEmail">Your Email Address *</label>
+                                <input type="email" id="userEmail" class="form-input" placeholder="your.email@example.com" required>
+                                <small class="form-hint">Your contact email for this report</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="sourceType">Source Type *</label>
+                                <select id="sourceType" class="form-select" required>
+                                    <option value="">Select source type</option>
+                                    <option value="email">Email</option>
+                                    <option value="phone">Phone Number</option>
+                                    <option value="social_media">Social Media</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="sourceValue" id="sourceValueLabel">Source Value *</label>
+                            <input type="text" id="sourceValue" class="form-input" placeholder="Enter email, phone number, or social media handle" required>
+                            <small class="form-hint" id="sourceHint">Enter the email address, phone number, or social media handle where you found this content</small>
+                        </div>
+                        
+                        <div class="form-submit-section">
+                            <button type="button" id="submitReportBtn" class="btn btn-primary btn-large">
+                                <span>Submit Report & Start Investigation</span>
+                            </button>
+                            <button type="button" id="cancelReportBtn" class="btn btn-secondary">
+                                <span>Cancel</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- OSINT Analysis Section (shown after report submission) -->
+                <div class="osint-analysis-section" id="osintAnalysisSection" style="display: none;">
+                    <div class="analysis-header">
+                        <h3>🔍 OSINT Source Analysis</h3>
+                        <p class="section-description">Security checks on the source of this content</p>
+                    </div>
+                    <div id="osintResults" class="osint-results-container">
+                        <!-- OSINT results will be displayed here -->
                     </div>
                 </div>
 
@@ -266,16 +310,6 @@ $baseUrl = $protocol . '://' . $host . $basePath;
                     </div>
                 </div>
 
-                <!-- OSINT Analysis Section -->
-                <div class="osint-analysis-section">
-                    <div class="analysis-header">
-                        <h3>🔍 OSINT Source Analysis</h3>
-                        <p class="section-description">Security checks on the source of this content</p>
-                    </div>
-                    <div id="osintResults" class="osint-results-container">
-                        <!-- OSINT results will be displayed here -->
-                    </div>
-                </div>
             </section>
 
             <!-- Recent Scans -->

@@ -14,14 +14,21 @@ class DeepfakeScanner {
         this.sourceValueLabel = document.getElementById('sourceValueLabel');
         this.sourceHint = document.getElementById('sourceHint');
         this.isAnalyzing = false;
+        this.currentAnalysisResult = null; // Store current analysis result
+        this.pendingAnalysis = null; // Store pending analysis data (for face selection)
+        this.hasFaces = null; // User selection: true, false, or null for video
         
-        this.uploadSectionWrapper = document.getElementById('uploadSectionWrapper');
-        this.formCompletionStatus = document.getElementById('formCompletionStatus');
+        this.reportFormSection = document.getElementById('reportFormSection');
+        this.osintAnalysisSection = document.getElementById('osintAnalysisSection');
+        this.reportAiContentBtn = document.getElementById('reportAiContentBtn');
+        this.submitReportBtn = document.getElementById('submitReportBtn');
+        this.cancelReportBtn = document.getElementById('cancelReportBtn');
+        this.faceDetectionPrompt = document.getElementById('faceDetectionPrompt');
         
         this.initializeEventListeners();
         this.setupPasteHandler();
         this.setupSourceTypeHandler();
-        this.setupFormValidation();
+        this.setupReportHandlers();
         this.loadRecentScans();
     }
     
@@ -205,65 +212,155 @@ class DeepfakeScanner {
         });
     }
     
-    setupFormValidation() {
-        // Add event listeners to all form fields
-        const fields = [this.userEmail, this.sourceType, this.sourceValue];
-        
-        fields.forEach(field => {
-            if (field) {
-                field.addEventListener('input', () => this.updateSubmitButton());
-                field.addEventListener('change', () => this.updateSubmitButton());
-            }
-        });
-        
-        // Add submit button listener
-        const submitBtn = document.getElementById('submitSourceInfo');
-        if (submitBtn) {
-            console.log('Submit button found, attaching event listener');
-            submitBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Submit button clicked via event listener');
-                this.handleFormSubmit();
+    setupReportHandlers() {
+        // Report AI Content button
+        if (this.reportAiContentBtn) {
+            this.reportAiContentBtn.addEventListener('click', () => {
+                this.showReportForm();
             });
-        } else {
-            console.error('Submit button not found!');
-            // Try again after a short delay
-            setTimeout(() => {
-                const retryBtn = document.getElementById('submitSourceInfo');
-                if (retryBtn) {
-                    console.log('Submit button found on retry');
-                    retryBtn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        console.log('Submit button clicked (retry)');
-                        this.handleFormSubmit();
-                    });
-                }
-            }, 500);
         }
         
-        // Initial check
-        this.updateSubmitButton();
+        // Submit Report button
+        if (this.submitReportBtn) {
+            this.submitReportBtn.addEventListener('click', () => {
+                this.handleReportSubmit();
+            });
+        }
+        
+        // Cancel Report button
+        if (this.cancelReportBtn) {
+            this.cancelReportBtn.addEventListener('click', () => {
+                this.hideReportForm();
+            });
+        }
     }
     
-    updateSubmitButton() {
+    showReportForm() {
+        if (this.reportFormSection) {
+            this.reportFormSection.style.display = 'block';
+            this.reportFormSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+    
+    hideReportForm() {
+        if (this.reportFormSection) {
+            this.reportFormSection.style.display = 'none';
+        }
+    }
+    
+    async handleReportSubmit() {
+        // Validate form
         const userEmail = this.userEmail?.value.trim();
         const sourceType = this.sourceType?.value;
         const sourceValue = this.sourceValue?.value.trim();
         
-        const isValid = userEmail && 
-                       sourceType && 
-                       sourceValue && 
-                       (sourceType !== 'email' || this.isValidEmail(sourceValue));
+        if (!userEmail) {
+            alert('Please enter your email address');
+            if (this.userEmail) this.userEmail.focus();
+            return;
+        }
         
-        const submitBtn = document.getElementById('submitSourceInfo');
-        if (submitBtn) {
-            // Don't disable the button - let handleFormSubmit show validation errors
-            // submitBtn.disabled = !isValid;
-            submitBtn.style.opacity = isValid ? '1' : '0.7';
-            submitBtn.style.cursor = 'pointer';
-            submitBtn.title = isValid ? 'Click to submit' : 'Please fill in all required fields';
+        if (!this.isValidEmail(userEmail)) {
+            alert('Please enter a valid email address');
+            if (this.userEmail) this.userEmail.focus();
+            return;
+        }
+        
+        if (!sourceType) {
+            alert('Please select a source type');
+            if (this.sourceType) this.sourceType.focus();
+            return;
+        }
+        
+        if (!sourceValue) {
+            alert('Please enter the source value');
+            if (this.sourceValue) this.sourceValue.focus();
+            return;
+        }
+        
+        // Validate source value based on type
+        if (sourceType === 'email' && !this.isValidEmail(sourceValue)) {
+            alert('Please enter a valid email address for the source');
+            if (this.sourceValue) this.sourceValue.focus();
+            return;
+        }
+        
+        // Disable button
+        this.submitReportBtn.disabled = true;
+        this.submitReportBtn.innerHTML = '<span>Submitting...</span>';
+        
+        try {
+            // Hide report form
+            this.hideReportForm();
+            
+            // Show OSINT analysis section
+            if (this.osintAnalysisSection) {
+                this.osintAnalysisSection.style.display = 'block';
+                this.osintAnalysisSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            
+            // Run OSINT investigation
+            await this.runOSINTInvestigation(userEmail, sourceType, sourceValue);
+            
+        } catch (error) {
+            console.error('Report submission error:', error);
+            alert('Error submitting report. Please try again.');
+        } finally {
+            this.submitReportBtn.disabled = false;
+            this.submitReportBtn.innerHTML = '<span>Submit Report & Start Investigation</span>';
+        }
+    }
+    
+    async runOSINTInvestigation(userEmail, sourceType, sourceValue) {
+        const osintResultsContainer = document.getElementById('osintResults');
+        
+        if (!osintResultsContainer) {
+            console.error('OSINT results container not found');
+            return;
+        }
+        
+        // Show loading state
+        osintResultsContainer.innerHTML = `
+            <div class="osint-loading">
+                <div class="spinner"></div>
+                <p>Running OSINT security checks on the source...</p>
+            </div>
+        `;
+        
+        try {
+            const checks = [];
+            
+            // Check source based on type
+            if (sourceType === 'email') {
+                // Check source email breach status (HaveIBeenPwned)
+                checks.push(this.checkBreach(sourceValue, 'Source Email'));
+                // Check source email platform registrations (Holehe)
+                checks.push(this.checkEmail(sourceValue, 'Source Email'));
+            } else if (sourceType === 'phone') {
+                // Check phone number with Semak Mule
+                checks.push(this.checkSemakMule(sourceValue, 'phone'));
+            } else if (sourceType === 'social_media') {
+                // For social media, note that it's social media
+                checks.push(Promise.resolve({
+                    type: 'social_media',
+                    source: sourceValue,
+                    message: 'Social media source detected. Manual investigation recommended.'
+                }));
+            }
+            
+            // Wait for all checks to complete
+            const results = await Promise.allSettled(checks);
+            
+            // Display results
+            this.displayOSINTResults(results, userEmail, sourceType, sourceValue);
+            
+        } catch (error) {
+            console.error('OSINT investigation error:', error);
+            osintResultsContainer.innerHTML = `
+                <div class="osint-error">
+                    <p>⚠️ Error running OSINT checks: ${error.message}</p>
+                </div>
+            `;
         }
     }
     
@@ -421,8 +518,20 @@ class DeepfakeScanner {
         if (emailData && emailData.success && emailData.data) {
             const emailInfo = emailData.data;
             const analysis = emailInfo.analysis || {};
-            const platforms = emailInfo.platforms || [];
+            const allPlatforms = emailInfo.platforms || [];
             const registeredCount = emailInfo.registered_count || 0;
+            
+            // Filter to only show registered platforms (status === 'used' or exists === true)
+            const registeredPlatforms = allPlatforms.filter(platform => {
+                const status = platform.status || '';
+                const exists = platform.exists;
+                return status === 'used' || exists === true;
+            });
+            
+            // Limit display to first 8 platforms
+            const displayLimit = 8;
+            const platformsToShow = registeredPlatforms.slice(0, displayLimit);
+            const remainingCount = registeredPlatforms.length - displayLimit;
             
             // Analysis section
             html += `
@@ -445,7 +554,7 @@ class DeepfakeScanner {
                             <div class="platforms-found">
                                 <h4>Registered Platforms (${registeredCount}):</h4>
                                 <div class="platforms-list">
-                                    ${platforms.slice(0, 8).map(platform => {
+                                    ${platformsToShow.map(platform => {
                                         const platformName = platform.platform || platform.name || 'Unknown';
                                         const platformUrl = platform.url || '#';
                                         return `
@@ -455,7 +564,7 @@ class DeepfakeScanner {
                                             </div>
                                         `;
                                     }).join('')}
-                                    ${platforms.length > 8 ? `<div class="platform-more">+ ${platforms.length - 8} more platforms</div>` : ''}
+                                    ${remainingCount > 0 ? `<div class="platform-more">+ ${remainingCount} more platforms</div>` : ''}
                                 </div>
                             </div>
                         ` : `
@@ -557,8 +666,20 @@ class DeepfakeScanner {
         if (emailData && emailData.success && emailData.data) {
             const emailInfo = emailData.data;
             const analysis = emailInfo.analysis || {};
-            const platforms = emailInfo.platforms || [];
+            const allPlatforms = emailInfo.platforms || [];
             const registeredCount = emailInfo.registered_count || 0;
+            
+            // Filter to only show registered platforms (status === 'used' or exists === true)
+            const registeredPlatforms = allPlatforms.filter(platform => {
+                const status = platform.status || '';
+                const exists = platform.exists;
+                return status === 'used' || exists === true;
+            });
+            
+            // Limit display to first 8 platforms
+            const displayLimit = 8;
+            const platformsToShow = registeredPlatforms.slice(0, displayLimit);
+            const remainingCount = registeredPlatforms.length - displayLimit;
             
             // Analysis section
             html += `
@@ -581,7 +702,7 @@ class DeepfakeScanner {
                             <div class="platforms-found">
                                 <h4>Registered Platforms (${registeredCount}):</h4>
                                 <div class="platforms-list">
-                                    ${platforms.slice(0, 8).map(platform => {
+                                    ${platformsToShow.map(platform => {
                                         const platformName = platform.platform || platform.name || 'Unknown';
                                         const platformUrl = platform.url || '#';
                                         return `
@@ -591,7 +712,7 @@ class DeepfakeScanner {
                                             </div>
                                         `;
                                     }).join('')}
-                                    ${platforms.length > 8 ? `<div class="platform-more">+ ${platforms.length - 8} more platforms</div>` : ''}
+                                    ${remainingCount > 0 ? `<div class="platform-more">+ ${remainingCount} more platforms</div>` : ''}
                                 </div>
                             </div>
                         ` : `
@@ -845,14 +966,36 @@ class DeepfakeScanner {
         }, 3000);
     }
     
+    handleFaceSelection(hasFaces) {
+        this.hasFaces = hasFaces;
+        
+        // Hide the prompt
+        if (this.faceDetectionPrompt) {
+            this.faceDetectionPrompt.style.display = 'none';
+        }
+        
+        // Continue with the pending analysis
+        if (this.pendingAnalysis) {
+            this.showProgress(true);
+            this.setProgress(90, 'Combining results...');
+            
+            const { file, isImage, sightEngineResult, mlResult } = this.pendingAnalysis;
+            
+            // Combine results based on face selection
+            const combinedResult = this.combineResults(sightEngineResult.detection, mlResult, isImage);
+            
+            this.setProgress(100, 'Analysis complete!');
+            setTimeout(() => {
+                this.showProgress(false);
+                console.log('Combined result:', combinedResult);
+                this.displayResults(combinedResult, file);
+                this.pendingAnalysis = null;
+            }, 1000);
+        }
+    }
+    
     async handleFileUpload(files) {
         if (!files || files.length === 0) return;
-        
-        // Validate source info before proceeding
-        const sourceInfo = this.validateSourceInfo();
-        if (!sourceInfo) {
-            return;
-        }
         
         if (this.isAnalyzing) {
             this.showTemporaryMessage('Analysis in progress. Please wait...');
@@ -961,19 +1104,36 @@ class DeepfakeScanner {
                 }
             }
             
-            this.setProgress(90, 'Combining results...');
-            
-            // Combine results: 60% SightEngine, 40% ML (if available)
-            const combinedResult = this.combineResults(sightEngineResult.detection, mlResult, isImage);
-            
-            this.setProgress(100, 'Analysis complete!');
-            setTimeout(() => {
+            // For videos, skip face selection and use 100% SightEngine
+            if (!isImage) {
+                this.hasFaces = null; // Videos don't use face selection
+                this.setProgress(90, 'Processing video analysis...');
+                
+                // For videos: 100% SightEngine only
+                const combinedResult = this.combineResults(sightEngineResult.detection, null, isImage);
+                
+                this.setProgress(100, 'Analysis complete!');
+                setTimeout(() => {
+                    this.showProgress(false);
+                    console.log('Combined result:', combinedResult);
+                    this.displayResults(combinedResult, file);
+                }, 1000);
+            } else {
+                // For images: show face detection prompt
                 this.showProgress(false);
-                console.log('Combined result:', combinedResult);
-                this.displayResults(combinedResult, file);
-                // Run OSINT checks after displaying results
-                this.runOSINTChecks();
-            }, 1000);
+                this.pendingAnalysis = {
+                    file: file,
+                    isImage: isImage,
+                    sightEngineResult: sightEngineResult,
+                    mlResult: mlResult
+                };
+                
+                // Show face detection prompt
+                if (this.faceDetectionPrompt) {
+                    this.faceDetectionPrompt.style.display = 'block';
+                    this.faceDetectionPrompt.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
             
         } catch (error) {
             this.showProgress(false);
@@ -989,12 +1149,6 @@ class DeepfakeScanner {
         
         if (!url) {
             this.showAlert('Please enter a valid URL', 'warning');
-            return;
-        }
-        
-        // Validate source info before proceeding
-        const sourceInfo = this.validateSourceInfo();
-        if (!sourceInfo) {
             return;
         }
         
@@ -1117,8 +1271,6 @@ class DeepfakeScanner {
             setTimeout(() => {
                 this.showProgress(false);
                 this.displayUrlResults(combinedAnalysis, url);
-                // Run OSINT checks after displaying results
-                this.runOSINTChecks();
             }, 1000);
             
         } catch (error) {
@@ -1170,6 +1322,9 @@ class DeepfakeScanner {
             return;
         }
         
+        // Store current analysis result
+        this.currentAnalysisResult = { analysis, results, file };
+        
         // Show results section
         this.resultsSection.style.display = 'block';
         this.resultsSection.scrollIntoView({ behavior: 'smooth' });
@@ -1177,7 +1332,7 @@ class DeepfakeScanner {
         // Update authenticity indicator
         this.updateAuthenticityIndicator(analysis);
         
-        // Update confidence score
+        // Update confidence score with better visualization
         const isAIGenerated = analysis.is_deepfake || analysis.is_ai_generated;
         this.updateConfidenceScore(analysis.confidence_score || 0, isAIGenerated);
         
@@ -1187,11 +1342,18 @@ class DeepfakeScanner {
         // Show media preview
         this.showMediaPreview(file, results);
         
-        // Show warning banner if deepfake detected
+        // Show warning banner and report button if AI detected
         if (analysis.is_deepfake || analysis.is_ai_generated) {
             const warningBanner = document.getElementById('warningBanner');
             if (warningBanner) {
                 warningBanner.style.display = 'block';
+                warningBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        } else {
+            // Hide warning banner if not AI
+            const warningBanner = document.getElementById('warningBanner');
+            if (warningBanner) {
+                warningBanner.style.display = 'none';
             }
         }
         
@@ -1278,6 +1440,9 @@ class DeepfakeScanner {
     }
     
     displayUrlResults(analysis, url) {
+        // Store current analysis result
+        this.currentAnalysisResult = { analysis, results: {}, url };
+        
         // Show results section
         this.resultsSection.style.display = 'block';
         this.resultsSection.scrollIntoView({ behavior: 'smooth' });
@@ -1285,7 +1450,7 @@ class DeepfakeScanner {
         // Update authenticity indicator
         this.updateAuthenticityIndicator(analysis);
         
-        // Update confidence score
+        // Update confidence score with better visualization
         const isAIGenerated = analysis.is_deepfake || analysis.is_ai_generated;
         this.updateConfidenceScore(analysis.confidence_score || 0, isAIGenerated);
         
@@ -1295,11 +1460,18 @@ class DeepfakeScanner {
         // Show URL preview
         this.showUrlPreview(url);
         
-        // Show warning banner if deepfake detected
+        // Show warning banner and report button if AI detected
         if (analysis.is_deepfake || analysis.is_ai_generated) {
             const warningBanner = document.getElementById('warningBanner');
             if (warningBanner) {
                 warningBanner.style.display = 'block';
+                warningBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        } else {
+            // Hide warning banner if not AI
+            const warningBanner = document.getElementById('warningBanner');
+            if (warningBanner) {
+                warningBanner.style.display = 'none';
             }
         }
         
@@ -1342,8 +1514,12 @@ class DeepfakeScanner {
         const seConfidence = combined.confidence_score || 0;
         
         // Calculate weighted combined scores
+        // For AI-generated score: 60% SightEngine + 40% ML
         const combinedAIScore = (seAIScore * 0.6) + (mlAIScore * 0.4);
-        const combinedConfidence = (seConfidence * 0.6) + (mlConfidence * 0.4);
+        
+        // Confidence score should be the combined AI score (probability of AI-generated)
+        // This represents: 60% from SightEngine + 40% from ML API
+        const combinedConfidence = combinedAIScore;
         
         // Determine if AI-generated
         const isAIGenerated = combinedAIScore > 0.5;
@@ -1377,7 +1553,6 @@ class DeepfakeScanner {
         const indicators = combined.indicators || [];
         if (mlResult.success) {
             indicators.push(`ML Model: ${mlResult.label_name} (${Math.round(mlConfidence * 100)}% confidence)`);
-            indicators.push(`Combined Analysis: ${isAIGenerated ? 'AI-Generated' : 'Human-Generated'} (${Math.round(combinedAIScore * 100)}% AI probability)`);
         }
         combined.indicators = indicators;
         
@@ -1413,8 +1588,19 @@ class DeepfakeScanner {
         const scoreText = document.getElementById('scoreText');
         
         const percentage = Math.round(score * 100);
+        const authenticPercentage = 100 - percentage;
+        
+        // Update the confidence bar
         scoreFill.style.width = `${percentage}%`;
-        scoreText.textContent = `${percentage}%`;
+        
+        // Update text to show both percentages
+        if (isDeepfake) {
+            scoreText.textContent = `${percentage}% AI-Generated`;
+            scoreText.title = `${percentage}% AI-Generated, ${authenticPercentage}% Authentic`;
+        } else {
+            scoreText.textContent = `${authenticPercentage}% Authentic`;
+            scoreText.title = `${authenticPercentage}% Authentic, ${percentage}% AI-Generated`;
+        }
         
         // Update color based on score
         if (isDeepfake || score > 0.7) {
@@ -1440,22 +1626,52 @@ class DeepfakeScanner {
         
         indicators.forEach(indicator => {
             const item = document.createElement('div');
+            
+            // Extract confidence percentage from indicator text
+            const confidenceMatch = indicator.match(/(\d+)%/);
+            const confidence = confidenceMatch ? parseInt(confidenceMatch[1]) : 0;
+            
             // Determine class based on indicator content
-            let itemClass = 'indicator-item warning';
+            let itemClass = 'warning';
             if (indicator.toLowerCase().includes('ai-generated') || 
                 indicator.toLowerCase().includes('deepfake') ||
                 indicator.toLowerCase().includes('artificial')) {
-                itemClass = 'indicator-item danger';
+                itemClass = 'danger';
             } else if (indicator.toLowerCase().includes('natural') ||
                        indicator.toLowerCase().includes('authentic') ||
+                       indicator.toLowerCase().includes('human') ||
                        indicator.toLowerCase().includes('no')) {
-                itemClass = 'indicator-item success';
+                itemClass = 'success';
             }
             
-            item.className = itemClass;
-            item.innerHTML = `<span>${itemClass.includes('danger') ? '⚠️' : itemClass.includes('success') ? '✓' : '🔍'}</span> <span>${indicator}</span>`;
+            // Extract label (remove confidence percentage)
+            const label = indicator.replace(/\s*\(.*?\)\s*/g, '').trim();
+            
+            item.className = `indicator-item ${itemClass}`;
+            item.innerHTML = this.createCircularProgress(confidence, itemClass, label);
             indicatorsList.appendChild(item);
         });
+    }
+    
+    createCircularProgress(percentage, type, label) {
+        const radius = 40;
+        const circumference = 2 * Math.PI * radius;
+        const offset = circumference - (percentage / 100) * circumference;
+        
+        return `
+            <div class="circular-progress">
+                <svg width="100" height="100">
+                    <circle class="circular-progress-bg" cx="50" cy="50" r="${radius}"></circle>
+                    <circle class="circular-progress-bar ${type}" 
+                            cx="50" cy="50" r="${radius}"
+                            stroke-dasharray="${circumference}"
+                            stroke-dashoffset="${offset}">
+                    </circle>
+                </svg>
+                <div class="circular-progress-text">${percentage}%</div>
+            </div>
+            <div class="indicator-label">${label}</div>
+        `;
     }
     
     showMediaPreview(file, results) {
@@ -1853,20 +2069,6 @@ class DeepfakeScanner {
         // Start with SightEngine results as base
         const combined = JSON.parse(JSON.stringify(sightEngineDetection)); // Deep copy
         
-        // If ML result is not available (or not an image), return SightEngine only
-        if (!mlResult || !mlResult.success || !isImage) {
-            combined.analysis.method = 'sightengine_only';
-            combined.ml_result = null;
-            return combined;
-        }
-        
-        // Extract ML probabilities
-        const mlProbabilities = mlResult.probabilities || {};
-        const mlAIScore = mlProbabilities.ai || 0;
-        const mlHumanScore = mlProbabilities.human || 0;
-        const mlLabel = mlResult.label || 0; // 0 = human, 1 = AI
-        const mlConfidence = mlResult.confidence || 0;
-        
         // Extract SightEngine scores
         const seAnalysis = combined.analysis || {};
         const seAIScore = seAnalysis.ai_generated_score || 
@@ -1875,12 +2077,64 @@ class DeepfakeScanner {
                                (seAnalysis.is_deepfake ? 0.7 : 0.3) || 0;
         const seConfidence = seAnalysis.confidence_score || 0;
         
-        // Calculate weighted combined scores
-        // For AI-generated score: 60% SightEngine + 40% ML
-        const combinedAIScore = (seAIScore * 0.6) + (mlAIScore * 0.4);
+        // VIDEOS: 100% SightEngine only
+        if (!isImage || this.hasFaces === null) {
+            combined.analysis.method = 'sightengine_video';
+            combined.analysis.confidence_score = seAIScore;
+            combined.ml_result = null;
+            combined.analysis.weightage = '100% SightEngine (Video)';
+            return combined;
+        }
         
-        // For overall confidence: weighted average
-        const combinedConfidence = (seConfidence * 0.6) + (mlConfidence * 0.4);
+        // Extract ML probabilities (if available)
+        const mlProbabilities = mlResult?.probabilities || {};
+        const mlAIScore = mlProbabilities.ai || 0;
+        const mlHumanScore = mlProbabilities.human || 0;
+        const mlLabel = mlResult?.label || 0; // 0 = human, 1 = AI
+        const mlConfidence = mlResult?.confidence || 0;
+        
+        // Determine weightage based on face selection
+        let combinedAIScore, combinedConfidence, method, weightage;
+        
+        if (this.hasFaces === true) {
+            // IMAGE WITH FACES: 20% Deepfake + 60% SightEngine + 20% ML
+            if (mlResult && mlResult.success) {
+                combinedAIScore = (seDeepfakeScore * 0.2) + (seAIScore * 0.6) + (mlAIScore * 0.2);
+                method = 'combined_with_deepfake';
+                weightage = '20% Deepfake + 60% SightEngine + 20% ML';
+            } else {
+                // If ML not available, use 25% Deepfake + 75% SightEngine
+                combinedAIScore = (seDeepfakeScore * 0.25) + (seAIScore * 0.75);
+                method = 'deepfake_sightengine';
+                weightage = '25% Deepfake + 75% SightEngine';
+            }
+        } else if (this.hasFaces === false) {
+            // IMAGE WITHOUT FACES: 60% SightEngine + 40% ML (no deepfake)
+            if (mlResult && mlResult.success) {
+                combinedAIScore = (seAIScore * 0.6) + (mlAIScore * 0.4);
+                method = 'sightengine_ml';
+                weightage = '60% SightEngine + 40% ML';
+            } else {
+                // If ML not available, use 100% SightEngine
+                combinedAIScore = seAIScore;
+                method = 'sightengine_only';
+                weightage = '100% SightEngine';
+            }
+        } else {
+            // Fallback: 60% SightEngine + 40% ML (if available)
+            if (mlResult && mlResult.success) {
+                combinedAIScore = (seAIScore * 0.6) + (mlAIScore * 0.4);
+                method = 'sightengine_ml';
+                weightage = '60% SightEngine + 40% ML';
+            } else {
+                combinedAIScore = seAIScore;
+                method = 'sightengine_only';
+                weightage = '100% SightEngine';
+            }
+        }
+        
+        // Confidence score is the combined AI score
+        combinedConfidence = combinedAIScore;
         
         // Determine if AI-generated (threshold: 0.5)
         const isAIGenerated = combinedAIScore > 0.5;
@@ -1890,7 +2144,9 @@ class DeepfakeScanner {
         combined.analysis.is_ai_generated = isAIGenerated;
         combined.analysis.ai_generated_score = combinedAIScore;
         combined.analysis.confidence_score = combinedConfidence;
-        combined.analysis.method = 'combined_sightengine_ml';
+        combined.analysis.method = method;
+        combined.analysis.weightage = weightage;
+        combined.analysis.has_faces = this.hasFaces;
         
         // Add ML-specific data (preserve all fields from ML result including raw_outputs)
         combined.ml_result = {
@@ -1915,7 +2171,6 @@ class DeepfakeScanner {
         const indicators = combined.analysis.indicators || [];
         if (mlResult.success) {
             indicators.push(`ML Model: ${mlResult.label_name} (${Math.round(mlConfidence * 100)}% confidence)`);
-            indicators.push(`Combined Analysis: ${isAIGenerated ? 'AI-Generated' : 'Human-Generated'} (${Math.round(combinedAIScore * 100)}% AI probability)`);
         }
         combined.analysis.indicators = indicators;
         
@@ -2562,8 +2817,26 @@ class DeepfakeScanner {
                 </div>
             `;
         } else if (data.type === 'email_check') {
-            const platforms = data.data?.platforms || [];
+            const allPlatforms = data.data?.platforms || [];
             const registeredCount = data.data?.registered_count || 0;
+            
+            // Filter to ONLY show registered platforms (status === 'used' or exists === true)
+            // IMPORTANT: Only show platforms where the email is actually registered
+            const registeredPlatforms = allPlatforms.filter(platform => {
+                const status = String(platform.status || '').toLowerCase();
+                const exists = platform.exists;
+                // Only include if status is 'used' OR exists is explicitly true
+                const isRegistered = status === 'used' || exists === true || exists === 'true';
+                return isRegistered;
+            });
+            
+            // Use the filtered count, not the original registeredCount (in case of data mismatch)
+            const actualRegisteredCount = registeredPlatforms.length;
+            
+            // Limit display to first 10 platforms
+            const displayLimit = 10;
+            const platformsToShow = registeredPlatforms.slice(0, displayLimit);
+            const remainingCount = registeredPlatforms.length - displayLimit;
             
             html += `
                 <div class="osint-header">
@@ -2571,11 +2844,12 @@ class DeepfakeScanner {
                 </div>
                 <div class="osint-body">
                     <p><strong>Email:</strong> ${data.email}</p>
-                    ${registeredCount > 0 ? `
-                        <p><strong>Found on ${registeredCount} platform(s)</strong></p>
+                    ${actualRegisteredCount > 0 ? `
+                        <p><strong>Found on ${actualRegisteredCount} platform(s)</strong></p>
                         <div class="platform-list">
-                            ${platforms.map(platform => {
+                            ${platformsToShow.map(platform => {
                                 const platformName = platform.platform || platform.name || 'Unknown';
+                                const platformUrl = platform.url || '#';
                                 return `
                                     <div class="platform-item found">
                                         <span>${platformName}</span>
@@ -2583,6 +2857,11 @@ class DeepfakeScanner {
                                     </div>
                                 `;
                             }).join('')}
+                            ${remainingCount > 0 ? `
+                                <div class="platform-more">
+                                    <span>+ ${remainingCount} more platform(s)</span>
+                                </div>
+                            ` : ''}
                         </div>
                     ` : `
                         <p><strong>Found on 0 platform(s)</strong></p>
