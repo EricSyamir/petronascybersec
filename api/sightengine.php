@@ -7,11 +7,17 @@ class SightengineAPI {
     private $apiUser;
     private $apiSecret;
     private $apiUrl;
+    private $geminiApiKey;
+    private $geminiEndpoint;
     
     public function __construct() {
         $this->apiUser = SIGHTENGINE_API_USER;
         $this->apiSecret = SIGHTENGINE_API_SECRET;
         $this->apiUrl = SIGHTENGINE_API_URL;
+        
+        // Gemini API for transcript analysis
+        $this->geminiApiKey = 'AIzaSyCOnJaGxm18KuXFBj7kJdo16mEcdmyJYzw';
+        $this->geminiEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
     }
     
     /**
@@ -187,8 +193,396 @@ class SightengineAPI {
     }
     
     /**
+     * Extract audio from video file and return audio file path
+     */
+    private function extractAudioFromVideo($videoPath) {
+        $ffmpegPath = $this->findFFmpeg();
+        if (!$ffmpegPath) {
+            error_log("FFmpeg not found - skipping audio extraction");
+            return null;
+        }
+        
+        // Create temporary audio file
+        $audioPath = sys_get_temp_dir() . '/audio_' . uniqid() . '.wav';
+        
+        // Extract audio using FFmpeg
+        $command = escapeshellarg($ffmpegPath) . ' -i ' . escapeshellarg($videoPath) . 
+                   ' -vn -acodec pcm_s16le -ar 16000 -ac 1 ' . escapeshellarg($audioPath) . ' 2>&1';
+        
+        $output = shell_exec($command);
+        
+        if (file_exists($audioPath) && filesize($audioPath) > 0) {
+            return $audioPath;
+        }
+        
+        error_log("Failed to extract audio: " . $output);
+        return null;
+    }
+    
+    /**
+     * Transcribe audio using Gemini 2.0 Flash with audio support
+     */
+    private function transcribeAudio($audioPath) {
+        try {
+            // Read audio file and convert to base64
+            $audioData = file_get_contents($audioPath);
+            if (!$audioData) {
+                return null;
+            }
+            
+            $base64Audio = base64_encode($audioData);
+            
+            // Use Gemini 2.0 Flash for audio transcription
+            $requestBody = [
+                'contents' => [
+                    [
+                        'parts' => [
+                            [
+                                'inline_data' => [
+                                    'mime_type' => 'audio/wav',
+                                    'data' => $base64Audio
+                                ]
+                            ],
+                            [
+                                'text' => 'Please transcribe the audio from this video. Provide only the transcript text without any additional commentary.'
+                            ]
+                        ]
+                    ]
+                ],
+                'generationConfig' => [
+                    'temperature' => 0.1,
+                    'maxOutputTokens' => 2048
+                ]
+            ];
+            
+            $ch = curl_init($this->geminiEndpoint . '?key=' . $this->geminiApiKey);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($requestBody));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($httpCode !== 200) {
+                error_log("Gemini transcription failed: HTTP $httpCode - $response");
+                return null;
+            }
+            
+            $result = json_decode($response, true);
+            
+            if (isset($result['candidates'][0]['content']['parts'][0]['text'])) {
+                return $result['candidates'][0]['content']['parts'][0]['text'];
+            }
+            
+            return null;
+            
+        } catch (Exception $e) {
+            error_log("Transcription error: " . $e->getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * Transcribe video using Gemini API with file upload method
+     * This method uploads the video file to Gemini, waits for processing, then transcribes
+     */
+    private function transcribeVideo($videoPath) {
+        try {
+            error_log("Starting video transcription using Gemini file upload API");
+            
+            if (!file_exists($videoPath)) {
+                error_log("Video file not found: " . $videoPath);
+                return null;
+            }
+            
+            $videoMimeType = 'video/mp4';
+            $fileExtension = strtolower(pathinfo($videoPath, PATHINFO_EXTENSION));
+            
+            // Determine MIME type based on extension
+            $mimeTypes = [
+                'mp4' => 'video/mp4',
+                'mov' => 'video/quicktime',
+                'avi' => 'video/x-msvideo',
+                'mkv' => 'video/x-matroska',
+                'webm' => 'video/webm'
+            ];
+            if (isset($mimeTypes[$fileExtension])) {
+                $videoMimeType = $mimeTypes[$fileExtension];
+            }
+            
+            // ==========================================================
+            // STEP 1: UPLOAD THE VIDEO FILE TO GEMINI
+            // ==========================================================
+            error_log("Step 1: Uploading video file to Gemini API...");
+            $fileBytes = file_get_contents($videoPath);
+            if (!$fileBytes) {
+                error_log("Failed to read video file");
+                return null;
+            }
+            
+            $uploadUrl = 'https://generativelanguage.googleapis.com/upload/v1beta/files?key=' . $this->geminiApiKey . '&uploadType=media';
+            
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $uploadUrl);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $fileBytes);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: ' . $videoMimeType]);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 120); // Increased timeout for file upload
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $err = curl_error($ch);
+            curl_close($ch);
+            
+            if ($err) {
+                error_log("cURL Error (Upload): " . $err);
+                return null;
+            }
+            
+            if ($httpCode !== 200) {
+                error_log("Upload failed: HTTP $httpCode - $response");
+                return null;
+            }
+            
+            $uploadResult = json_decode($response, true);
+            if (!isset($uploadResult['file'])) {
+                error_log("Error uploading file: " . $response);
+                return null;
+            }
+            
+            $fileUri = $uploadResult['file']['uri'];
+            $fileName = $uploadResult['file']['name']; // e.g., "files/abc-123"
+            error_log("File uploaded successfully. URI: $fileUri, Name: $fileName");
+            
+            // ==========================================================
+            // STEP 2: POLL FOR FILE STATUS (wait until ACTIVE)
+            // ==========================================================
+            error_log("Step 2: Waiting for file to be processed...");
+            $fileApiUrl = 'https://generativelanguage.googleapis.com/v1beta/' . $fileName . '?key=' . $this->geminiApiKey;
+            $fileState = '';
+            $maxAttempts = 12; // Maximum 60 seconds (12 * 5)
+            $attempt = 0;
+            
+            while ($fileState !== 'ACTIVE' && $attempt < $maxAttempts) {
+                $attempt++;
+                error_log("Polling attempt $attempt/$maxAttempts...");
+                
+                sleep(5); // Wait 5 seconds between polls
+                
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, $fileApiUrl);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+                
+                $response = curl_exec($ch);
+                $err = curl_error($ch);
+                curl_close($ch);
+                
+                if ($err) {
+                    error_log("cURL Error (Polling): " . $err);
+                    continue;
+                }
+                
+                $fileData = json_decode($response, true);
+                if (isset($fileData['state'])) {
+                    $fileState = $fileData['state'];
+                    error_log("File state: $fileState");
+                } elseif (isset($fileData['error'])) {
+                    error_log("Error checking file state: " . $fileData['error']['message']);
+                    return null;
+                }
+                
+                if ($fileState === 'FAILED') {
+                    error_log("File processing failed");
+                    return null;
+                }
+            }
+            
+            if ($fileState !== 'ACTIVE') {
+                error_log("File did not become ACTIVE within timeout period");
+                return null;
+            }
+            
+            error_log("File is ACTIVE and ready for transcription");
+            
+            // ==========================================================
+            // STEP 3: REQUEST TRANSCRIPTION
+            // ==========================================================
+            error_log("Step 3: Sending transcription request...");
+            $modelUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' . $this->geminiApiKey;
+            
+            $prompt = 'Please provide a full, accurate transcript of this video. Provide only the transcript text without any additional commentary.';
+            
+            $postData = [
+                'contents' => [
+                    [
+                        'parts' => [
+                            ['text' => $prompt],
+                            [
+                                'fileData' => [
+                                    'mimeType' => $videoMimeType,
+                                    'fileUri' => $fileUri
+                                ]
+                            ]
+                        ]
+                    ]
+                ],
+                'generationConfig' => [
+                    'temperature' => 0.1,
+                    'maxOutputTokens' => 2048
+                ]
+            ];
+            
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $modelUrl);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 120);
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $err = curl_error($ch);
+            curl_close($ch);
+            
+            if ($err) {
+                error_log("cURL Error (Transcription): " . $err);
+                return null;
+            }
+            
+            if ($httpCode !== 200) {
+                error_log("Transcription failed: HTTP $httpCode - $response");
+                return null;
+            }
+            
+            $result = json_decode($response, true);
+            
+            if (!isset($result['candidates'][0]['content']['parts'][0]['text'])) {
+                error_log("Error in transcription response: " . $response);
+                return null;
+            }
+            
+            $transcript = $result['candidates'][0]['content']['parts'][0]['text'];
+            error_log("Transcription completed successfully. Length: " . strlen($transcript) . " characters");
+            
+            return $transcript;
+            
+        } catch (Exception $e) {
+            error_log("Video transcription error: " . $e->getMessage());
+            error_log("Exception trace: " . $e->getTraceAsString());
+            return null;
+        }
+    }
+    
+    /**
+     * Analyze transcript for AI/deepfake/impersonation indicators using LLM
+     */
+    private function analyzeTranscriptWithLLM($transcript) {
+        try {
+            $prompt = "Analyze this video transcript for AI-generated content, deepfake, and impersonation indicators.\n\n";
+            $prompt .= "Transcript:\n\"" . $transcript . "\"\n\n";
+            $prompt .= "Please analyze and provide a detailed assessment focusing on:\n";
+            $prompt .= "1. AI-generated speech patterns (unnatural cadence, robotic tone indicators)\n";
+            $prompt .= "2. Deepfake indicators (inconsistent voice characteristics, audio artifacts)\n";
+            $prompt .= "3. Impersonation attempts (mimicking celebrities, authority figures, brands)\n";
+            $prompt .= "4. Scam indicators (urgency, financial requests, suspicious claims)\n";
+            $prompt .= "5. Malaysian-specific scam patterns (fake PETRONAS, government agencies, banks)\n\n";
+            $prompt .= "Respond with JSON only:\n";
+            $prompt .= "{\n";
+            $prompt .= "  \"is_ai_generated\": boolean,\n";
+            $prompt .= "  \"is_deepfake\": boolean,\n";
+            $prompt .= "  \"is_impersonation\": boolean,\n";
+            $prompt .= "  \"confidence_score\": number (0-1),\n";
+            $prompt .= "  \"ai_speech_score\": number (0-1),\n";
+            $prompt .= "  \"deepfake_score\": number (0-1),\n";
+            $prompt .= "  \"impersonation_score\": number (0-1),\n";
+            $prompt .= "  \"scam_score\": number (0-1),\n";
+            $prompt .= "  \"indicators\": [array of specific indicators found],\n";
+            $prompt .= "  \"impersonation_target\": \"name of person/brand being impersonated\" | null,\n";
+            $prompt .= "  \"scam_type\": \"phishing\" | \"investment\" | \"job\" | \"lottery\" | \"romance\" | \"other\" | null,\n";
+            $prompt .= "  \"reasoning\": \"brief explanation\",\n";
+            $prompt .= "  \"suspicious_phrases\": [array of suspicious phrases from transcript]\n";
+            $prompt .= "}";
+            
+            $requestBody = [
+                'contents' => [
+                    [
+                        'parts' => [
+                            ['text' => $prompt]
+                        ]
+                    ]
+                ],
+                'generationConfig' => [
+                    'temperature' => 0.1,
+                    'topK' => 1,
+                    'topP' => 1,
+                    'maxOutputTokens' => 2048
+                ]
+            ];
+            
+            $ch = curl_init($this->geminiEndpoint . '?key=' . $this->geminiApiKey);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($requestBody));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($httpCode !== 200) {
+                error_log("Gemini analysis failed: HTTP $httpCode - $response");
+                return null;
+            }
+            
+            $result = json_decode($response, true);
+            
+            if (isset($result['candidates'][0]['content']['parts'][0]['text'])) {
+                $analysisText = $result['candidates'][0]['content']['parts'][0]['text'];
+                
+                // Extract JSON from response
+                if (preg_match('/\{[\s\S]*\}/', $analysisText, $matches)) {
+                    $analysisResult = json_decode($matches[0], true);
+                    
+                    if ($analysisResult) {
+                        // Validate and sanitize
+                        return [
+                            'is_ai_generated' => (bool)($analysisResult['is_ai_generated'] ?? false),
+                            'is_deepfake' => (bool)($analysisResult['is_deepfake'] ?? false),
+                            'is_impersonation' => (bool)($analysisResult['is_impersonation'] ?? false),
+                            'confidence_score' => (float)min(1, max(0, $analysisResult['confidence_score'] ?? 0)),
+                            'ai_speech_score' => (float)min(1, max(0, $analysisResult['ai_speech_score'] ?? 0)),
+                            'deepfake_score' => (float)min(1, max(0, $analysisResult['deepfake_score'] ?? 0)),
+                            'impersonation_score' => (float)min(1, max(0, $analysisResult['impersonation_score'] ?? 0)),
+                            'scam_score' => (float)min(1, max(0, $analysisResult['scam_score'] ?? 0)),
+                            'indicators' => (array)($analysisResult['indicators'] ?? []),
+                            'impersonation_target' => $analysisResult['impersonation_target'] ?? null,
+                            'scam_type' => $analysisResult['scam_type'] ?? null,
+                            'reasoning' => (string)($analysisResult['reasoning'] ?? ''),
+                            'suspicious_phrases' => (array)($analysisResult['suspicious_phrases'] ?? [])
+                        ];
+                    }
+                }
+            }
+            
+            return null;
+            
+        } catch (Exception $e) {
+            error_log("Transcript analysis error: " . $e->getMessage());
+            return null;
+        }
+    }
+    
+    /**
      * Analyze media file for AI-generated content using Sightengine API
      * Uses different endpoints for images vs videos
+     * For videos, also performs transcript analysis with LLM
      */
     public function analyzeFile($filePath, $models = null) {
         if (!file_exists($filePath)) {
@@ -249,6 +643,53 @@ class SightengineAPI {
         
         if (json_last_error() !== JSON_ERROR_NONE) {
             return ['error' => 'Invalid API response format'];
+        }
+        
+        // For videos, perform transcript analysis with LLM
+        // Note: Transcript analysis is optional - if it fails, we still return Sightengine results
+        if ($isVideo) {
+            error_log("VIDEO DETECTED - Starting transcript analysis process");
+            $transcriptAnalysis = null;
+            $transcript = null;
+            $audioPath = null;
+            $transcriptError = null;
+            
+            try {
+                // Use direct video transcription with Gemini file upload API
+                error_log("Using Gemini file upload API for video transcription");
+                $transcript = $this->transcribeVideo($filePath);
+                
+                if ($transcript && strlen(trim($transcript)) > 10) {
+                    error_log("Transcript received, length: " . strlen($transcript) . " characters");
+                    error_log("Transcript preview: " . substr($transcript, 0, 100));
+                    // Analyze transcript with LLM
+                    error_log("Starting LLM transcript analysis...");
+                    $transcriptAnalysis = $this->analyzeTranscriptWithLLM($transcript);
+                    if ($transcriptAnalysis) {
+                        error_log("Transcript analysis completed successfully");
+                    } else {
+                        error_log("Transcript analysis returned null");
+                    }
+                } else {
+                    error_log("Transcript too short or empty: " . ($transcript ? strlen($transcript) : 'null'));
+                }
+            } catch (Exception $e) {
+                // Log error but don't fail the entire request
+                $transcriptError = $e->getMessage();
+                error_log("Video transcript analysis error (non-critical): " . $transcriptError);
+                error_log("Exception trace: " . $e->getTraceAsString());
+            }
+            
+            // Add transcript analysis to result (even if null/failed)
+            $result['transcript'] = $transcript;
+            $result['transcript_analysis'] = $transcriptAnalysis;
+            if ($transcriptError) {
+                $result['transcript_error'] = $transcriptError;
+            }
+            
+            error_log("Transcript data added to result - transcript: " . ($transcript ? "YES (" . strlen($transcript) . " chars)" : "NO") . ", analysis: " . ($transcriptAnalysis ? "YES" : "NO"));
+        } else {
+            error_log("Not a video file, skipping transcript analysis");
         }
 
         return $result;
@@ -435,18 +876,53 @@ class SightengineAPI {
                 }
             }
             
+            $sightengineScore = 0.0;
             if (!empty($frameScores)) {
-                // Calculate average score across all frames
-                $aiGeneratedScore = array_sum($frameScores) / count($frameScores);
+                // Calculate average score across all frames (Sightengine visual analysis)
+                $sightengineScore = array_sum($frameScores) / count($frameScores);
+            }
+            
+            // Check if transcript analysis is available
+            $transcriptScore = 0.0;
+            $hasTranscriptAnalysis = false;
+            
+            if (isset($results['transcript_analysis']) && is_array($results['transcript_analysis'])) {
+                $transcriptAnalysis = $results['transcript_analysis'];
+                $hasTranscriptAnalysis = true;
+                
+                // Use the confidence score from LLM transcript analysis
+                $transcriptScore = floatval($transcriptAnalysis['confidence_score'] ?? 0);
+            }
+            
+            // Calculate weighted average: 60% Transcript Analysis + 40% Sightengine Visual
+            if ($hasTranscriptAnalysis) {
+                $aiGeneratedScore = ($transcriptScore * 0.6) + ($sightengineScore * 0.4);
+                $confidenceScore = $aiGeneratedScore;
+                
+                // Only show 2 main scores that total 100%: Gemini (60% weightage) and Sightengine (40% weightage)
+                // Show the actual confidence percentages, not the weightage percentages
+                $indicators[] = 'Gemini transcript analysis (60%): ' . round($transcriptScore * 100, 1) . '%';
+                $indicators[] = 'Sightengine visual analysis (40%): ' . round($sightengineScore * 100, 1) . '%';
+                
+                // Determine if AI-generated based on combined score
+                if ($aiGeneratedScore > 0.5) {
+                    $isAIGenerated = true;
+                }
+                
+                // Check for deepfake based on transcript analysis
+                if (!empty($transcriptAnalysis['is_deepfake']) || !empty($transcriptAnalysis['is_impersonation'])) {
+                    $isDeepfake = true;
+                }
+            } else {
+                // Fallback to Sightengine only if transcript analysis not available
+                $aiGeneratedScore = $sightengineScore;
+                $confidenceScore = $sightengineScore;
+                $indicators[] = 'Sightengine visual analysis: ' . round($sightengineScore * 100, 1) . '%';
+                $indicators[] = 'Gemini transcript analysis: Not available';
                 
                 if ($aiGeneratedScore > 0.5) {
                     $isAIGenerated = true;
-                    $indicators[] = 'AI-generated video detected (confidence: ' . round($aiGeneratedScore * 100, 1) . '%, analyzed ' . count($frames) . ' frames)';
-                } else {
-                    $indicators[] = 'Natural video content detected (confidence: ' . round((1 - $aiGeneratedScore) * 100, 1) . '%, analyzed ' . count($frames) . ' frames)';
                 }
-                
-                $confidenceScore = $aiGeneratedScore;
             }
         }
         // IMAGE RESPONSE FORMAT: type.ai_generated and type.deepfake
@@ -497,7 +973,7 @@ class SightengineAPI {
             $indicators[] = 'Natural text content detected';
         }
         
-        return [
+        $returnData = [
             'is_ai_generated' => $isAIGenerated,
             'is_deepfake' => $isDeepfake || $isAIGenerated, // Deepfake or AI-generated content
             'confidence_score' => round($confidenceScore, 4),
@@ -507,6 +983,17 @@ class SightengineAPI {
             'raw_results' => $results,
             'method' => 'sightengine_api'
         ];
+        
+        // Add transcript data if available (for videos)
+        if (isset($results['transcript'])) {
+            $returnData['transcript'] = $results['transcript'];
+        }
+        
+        if (isset($results['transcript_analysis'])) {
+            $returnData['transcript_analysis'] = $results['transcript_analysis'];
+        }
+        
+        return $returnData;
     }
     
     /**
@@ -582,7 +1069,52 @@ if (basename($_SERVER['PHP_SELF']) === 'sightengine.php' && isset($_SERVER['REQU
                         throw new Exception($results['error']);
                     }
                     
+                    // Log transcript data from analyzeFile
+                    error_log("After analyzeFile() - Checking for transcript data...");
+                    error_log("Results keys: " . implode(', ', array_keys($results)));
+                    error_log("Full results structure: " . json_encode(array_keys($results)));
+                    
+                    if (isset($results['transcript'])) {
+                        error_log("✓ Transcript found in results: " . strlen($results['transcript']) . " characters");
+                        error_log("Transcript preview: " . substr($results['transcript'], 0, 200));
+                    } else {
+                        error_log("✗ No transcript in results");
+                        // Check if it's nested somewhere
+                        if (isset($results['data'])) {
+                            error_log("Checking results['data'] keys: " . implode(', ', array_keys($results['data'])));
+                        }
+                    }
+                    if (isset($results['transcript_analysis'])) {
+                        error_log("✓ Transcript analysis found in results");
+                        error_log("Transcript analysis keys: " . implode(', ', array_keys($results['transcript_analysis'])));
+                    } else {
+                        error_log("✗ No transcript_analysis in results");
+                    }
+                    
                     $detection = $sightengine->processDetection($filePath, $results);
+                    
+                    // Ensure transcript data is preserved in detection object
+                    // Transcript data comes from analyzeFile() and should be in $results
+                    if (isset($results['transcript'])) {
+                        error_log("Adding transcript to detection object");
+                        $detection['transcript'] = $results['transcript'];
+                        // Also add to detection_results for easier access
+                        if (isset($detection['detection_results'])) {
+                            $detection['detection_results']['transcript'] = $results['transcript'];
+                        }
+                    }
+                    if (isset($results['transcript_analysis'])) {
+                        error_log("Adding transcript_analysis to detection object");
+                        $detection['transcript_analysis'] = $results['transcript_analysis'];
+                        // Also add to detection_results for easier access
+                        if (isset($detection['detection_results'])) {
+                            $detection['detection_results']['transcript_analysis'] = $results['transcript_analysis'];
+                        }
+                    }
+                    if (isset($results['transcript_error'])) {
+                        error_log("Adding transcript_error to detection object: " . $results['transcript_error']);
+                        $detection['transcript_error'] = $results['transcript_error'];
+                    }
                     
                     // Run ELA analysis for images (JPG/PNG only)
                     $elaResult = null;
@@ -613,6 +1145,51 @@ if (basename($_SERVER['PHP_SELF']) === 'sightengine.php' && isset($_SERVER['REQU
                         'file_path' => $filePath,
                         'message' => translateText('analysis_complete')
                     ];
+                    
+                    // Also add transcript data directly to response for easier access
+                    if (isset($results['transcript'])) {
+                        error_log("Adding transcript to response object");
+                        $response['transcript'] = $results['transcript'];
+                    }
+                    if (isset($results['transcript_analysis'])) {
+                        error_log("Adding transcript_analysis to response object");
+                        $response['transcript_analysis'] = $results['transcript_analysis'];
+                    }
+                    
+                    error_log("Final response keys: " . implode(', ', array_keys($response)));
+                    
+                    // Debug: Log full response structure
+                    if (isset($response['detection'])) {
+                        error_log("Response detection keys: " . implode(', ', array_keys($response['detection'])));
+                        if (isset($response['detection']['detection_results'])) {
+                            error_log("Detection results keys: " . implode(', ', array_keys($response['detection']['detection_results'])));
+                        }
+                        if (isset($response['detection']['analysis'])) {
+                            error_log("Detection analysis keys: " . implode(', ', array_keys($response['detection']['analysis'])));
+                        }
+                    }
+                    
+                    // Ensure transcript is in multiple places for frontend access
+                    if (isset($results['transcript'])) {
+                        // Add to detection.analysis as well
+                        if (isset($response['detection']['analysis'])) {
+                            $response['detection']['analysis']['transcript'] = $results['transcript'];
+                        }
+                        // Add to detection.detection_results as well
+                        if (isset($response['detection']['detection_results'])) {
+                            $response['detection']['detection_results']['transcript'] = $results['transcript'];
+                        }
+                    }
+                    if (isset($results['transcript_analysis'])) {
+                        // Add to detection.analysis as well
+                        if (isset($response['detection']['analysis'])) {
+                            $response['detection']['analysis']['transcript_analysis'] = $results['transcript_analysis'];
+                        }
+                        // Add to detection.detection_results as well
+                        if (isset($response['detection']['detection_results'])) {
+                            $response['detection']['detection_results']['transcript_analysis'] = $results['transcript_analysis'];
+                        }
+                    }
                     
                     // Add ELA result to detection object if available
                     if ($elaResult !== null) {

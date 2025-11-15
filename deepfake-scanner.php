@@ -295,6 +295,7 @@ $baseUrl = $protocol . '://' . $host . $basePath;
                         <button class="analysis-tab" data-tab="ai-generated" onclick="showTab('ai-generated')">
                             <span class="tab-icon">🤖</span>
                             <span class="tab-label">Generated AI Analysis</span>
+                            <span class="tab-badge" id="transcriptBadge" style="display: none; margin-left: 8px; background: #0066cc; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75em;">🎙️ Transcript</span>
                         </button>
                         <button class="analysis-tab" data-tab="ela" onclick="showTab('ela')" style="display: none;">
                             <span class="tab-icon">🔍</span>

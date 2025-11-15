@@ -1051,28 +1051,56 @@ class DeepfakeScanner {
             // Check if it's an image (for ML detection)
             const isImage = file.type.startsWith('image/');
             
-            // Call SightEngine API (includes ELA analysis)
-            this.setProgress(20, 'Analyzing with AI detection and ELA...');
+            // Call SightEngine API (includes ELA analysis and transcript analysis for videos)
+            const isVideo = file.type.startsWith('video/');
+            if (isVideo) {
+                console.log('🎬 STARTING VIDEO ANALYSIS');
+                console.log('  - Video file:', file.name);
+                console.log('  - Video type:', file.type);
+                console.log('  - Video size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+                this.setProgress(20, 'Analyzing video (visual + audio transcript)...');
+            } else {
+                this.setProgress(20, 'Analyzing with AI detection and ELA...');
+            }
+            
+            console.log('📤 SENDING REQUEST TO SIGHTENGINE API...');
             const sightEngineResponse = await fetch('api/sightengine.php', {
                 method: 'POST',
                 body: formData
             });
             
-            if (!sightEngineResponse.ok) {
-                throw new Error(`SightEngine API error! status: ${sightEngineResponse.status}`);
-            }
+            console.log('📥 RECEIVED RESPONSE FROM SIGHTENGINE API');
+            console.log('  - Status:', sightEngineResponse.status);
+            console.log('  - Status text:', sightEngineResponse.statusText);
+            console.log('  - Content-Type:', sightEngineResponse.headers.get('content-type'));
             
             const sightEngineText = await sightEngineResponse.text();
+            console.log('📄 RAW RESPONSE TEXT LENGTH:', sightEngineText.length, 'characters');
+            console.log('📄 RAW RESPONSE PREVIEW:', sightEngineText.substring(0, 500));
+            
             let sightEngineResult;
             try {
                 sightEngineResult = JSON.parse(sightEngineText);
+                console.log('✅ SUCCESSFULLY PARSED JSON RESPONSE');
+                console.log('  - Response structure:', Object.keys(sightEngineResult));
             } catch (parseError) {
-                console.error('SightEngine JSON Parse Error:', parseError);
+                console.error('❌ SIGHTENGINE JSON PARSE ERROR:', parseError);
+                console.error('  - Raw text:', sightEngineText);
                 throw new Error(`Invalid SightEngine response format`);
             }
             
-            if (!sightEngineResult.success) {
-                throw new Error(sightEngineResult.error || 'SightEngine analysis failed');
+            // Check for errors in response (even if status is 200)
+            if (!sightEngineResponse.ok || !sightEngineResult.success) {
+                const errorMessage = sightEngineResult.error || `SightEngine API error! status: ${sightEngineResponse.status}`;
+                const debugInfo = sightEngineResult.debug_info || {};
+                
+                console.error('❌ SIGHTENGINE API ERROR:');
+                console.error('  - Status:', sightEngineResponse.status);
+                console.error('  - Error message:', errorMessage);
+                console.error('  - Debug info:', debugInfo);
+                console.error('  - Full response:', sightEngineResult);
+                
+                throw new Error(errorMessage);
             }
             
             // Call ML detection API (only for images)
@@ -1115,19 +1143,74 @@ class DeepfakeScanner {
                 console.error('ELA Error from server:', sightEngineResult.ela_error);
             }
             
-            // For videos, skip face selection and use 100% SightEngine
+            // For videos, skip face selection and use 50% SightEngine + 50% LLM Transcript
             if (!isImage) {
+                console.log('🎬 VIDEO ANALYSIS DETECTED');
+                console.log('  - File name:', file.name);
+                console.log('  - File type:', file.type);
+                console.log('  - File size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+                
                 this.hasFaces = null; // Videos don't use face selection
                 this.setProgress(90, 'Processing video analysis...');
                 
-                // For videos: 100% SightEngine only
+                // Log raw Sightengine response
+                console.log('📥 RAW SIGHTENGINE RESPONSE:', sightEngineResult);
+                
+                // Check for transcript in raw results
+                const rawDetection = sightEngineResult.detection || {};
+                const rawResults = rawDetection.detection_results || rawDetection.raw_results || {};
+                
+                console.log('🔍 CHECKING FOR TRANSCRIPT DATA...');
+                if (rawResults.transcript) {
+                    console.log('✅ TRANSCRIPT FOUND!');
+                    console.log('  - Transcript length:', rawResults.transcript.length, 'characters');
+                    console.log('  - Transcript preview:', rawResults.transcript.substring(0, 150) + '...');
+                } else {
+                    console.warn('⚠️ No transcript found in raw results');
+                }
+                
+                if (rawResults.transcript_analysis) {
+                    console.log('✅ TRANSCRIPT ANALYSIS FOUND!');
+                    console.log('  - Full transcript analysis:', rawResults.transcript_analysis);
+                    console.log('  - Confidence score:', rawResults.transcript_analysis.confidence_score);
+                    console.log('  - Is AI generated:', rawResults.transcript_analysis.is_ai_generated);
+                    console.log('  - Is deepfake:', rawResults.transcript_analysis.is_deepfake);
+                    console.log('  - Is impersonation:', rawResults.transcript_analysis.is_impersonation);
+                    console.log('  - Impersonation target:', rawResults.transcript_analysis.impersonation_target);
+                    console.log('  - Scam type:', rawResults.transcript_analysis.scam_type);
+                    console.log('  - Indicators:', rawResults.transcript_analysis.indicators);
+                } else {
+                    console.warn('⚠️ No transcript analysis found in raw results');
+                }
+                
+                // For videos: 50% SightEngine + 50% LLM Transcript Analysis
                 const combinedResult = this.combineResults(sightEngineResult.detection, null, isImage);
                 combinedResult.ela_result = null; // No ELA for videos
+                
+                // Log combined result structure
+                console.log('⚖️ COMBINED RESULT STRUCTURE:');
+                console.log('  - Combined result:', combinedResult);
+                if (combinedResult.analysis) {
+                    console.log('  - Analysis object:', combinedResult.analysis);
+                    console.log('  - Final confidence score:', combinedResult.analysis.confidence_score);
+                    console.log('  - Final AI generated score:', combinedResult.analysis.ai_generated_score);
+                    console.log('  - Final is AI generated:', combinedResult.analysis.is_ai_generated);
+                    console.log('  - Final is deepfake:', combinedResult.analysis.is_deepfake);
+                    console.log('  - All indicators:', combinedResult.analysis.indicators);
+                    
+                    // Check if transcript data is in analysis
+                    if (combinedResult.analysis.transcript) {
+                        console.log('✅ Transcript found in analysis object');
+                    }
+                    if (combinedResult.analysis.transcript_analysis) {
+                        console.log('✅ Transcript analysis found in analysis object');
+                    }
+                }
                 
                 this.setProgress(100, 'Analysis complete!');
                 setTimeout(() => {
                     this.showProgress(false);
-                    console.log('Combined result:', combinedResult);
+                    console.log('✅ FINAL COMBINED RESULT READY FOR DISPLAY:', combinedResult);
                     this.displayResults(combinedResult, file);
                 }, 1000);
             } else {
@@ -1296,7 +1379,9 @@ class DeepfakeScanner {
     }
     
     displayResults(detection, file) {
-        console.log('Displaying results:', detection);
+        console.log('📊 DISPLAY RESULTS CALLED');
+        console.log('  - Detection object:', detection);
+        console.log('  - File:', file?.name || 'N/A');
         
         // Handle different response structures
         let analysis, results;
@@ -1320,23 +1405,44 @@ class DeepfakeScanner {
             // Standard structure: detection.analysis and detection.detection_results
             analysis = detection.analysis;
             results = parsedResults;
+            console.log('✅ Using standard structure (detection.analysis)');
         } else if (detection && detection.is_ai_generated !== undefined) {
             // Direct analysis object
             analysis = detection;
             results = parsedResults;
+            console.log('✅ Using direct analysis structure');
         } else if (detection && detection.detection_results) {
             // Only detection_results available, need to analyze it
             results = parsedResults;
             // Try to extract analysis from results or create a basic one
             analysis = this.extractAnalysisFromResults(results);
+            console.log('✅ Extracted analysis from detection_results');
         } else {
-            console.error('Invalid detection structure:', detection);
+            console.error('❌ Invalid detection structure:', detection);
             this.showAlert('Invalid response structure from server', 'danger');
             return;
         }
         
+        // Log transcript data if available
+        if (analysis.transcript || results.transcript) {
+            console.log('🎙️ TRANSCRIPT DATA FOUND IN ANALYSIS:');
+            console.log('  - Transcript:', analysis.transcript || results.transcript);
+            console.log('  - Transcript length:', (analysis.transcript || results.transcript).length, 'characters');
+        }
+        
+        if (analysis.transcript_analysis || results.transcript_analysis) {
+            console.log('🤖 TRANSCRIPT ANALYSIS FOUND IN ANALYSIS:');
+            console.log('  - Full transcript analysis:', analysis.transcript_analysis || results.transcript_analysis);
+        }
+        
         // Store current analysis result
         this.currentAnalysisResult = { analysis, results, file };
+        console.log('💾 Stored analysis result:', {
+            hasAnalysis: !!analysis,
+            hasResults: !!results,
+            hasTranscript: !!(analysis.transcript || results.transcript),
+            hasTranscriptAnalysis: !!(analysis.transcript_analysis || results.transcript_analysis)
+        });
         
         // Show results section
         this.resultsSection.style.display = 'block';
@@ -1658,53 +1764,93 @@ class DeepfakeScanner {
             return;
         }
         
+        // Separate Gemini (60%) and Sightengine (40%) indicators - only show the 2 main scores
+        const geminiIndicators = [];
+        const sightengineIndicators = [];
+        
         filteredIndicators.forEach(indicator => {
+            if (indicator.toLowerCase().includes('gemini') || indicator.toLowerCase().includes('transcript')) {
+                geminiIndicators.push(indicator);
+            } else if (indicator.toLowerCase().includes('sightengine') || indicator.toLowerCase().includes('visual')) {
+                sightengineIndicators.push(indicator);
+            }
+        });
+        
+        // Display Gemini indicator first (60% weightage) with larger size
+        geminiIndicators.forEach(indicator => {
             const item = document.createElement('div');
             
-            // Extract confidence percentage from indicator text
-            const confidenceMatch = indicator.match(/(\d+)%/);
-            const confidence = confidenceMatch ? parseInt(confidenceMatch[1]) : 0;
+            // Extract confidence percentage from indicator text (the actual score, not weightage)
+            const confidenceMatch = indicator.match(/(\d+\.?\d*)%/);
+            const confidence = confidenceMatch ? parseFloat(confidenceMatch[1]) : 0;
             
-            // Determine class based on indicator content
+            // Determine class based on confidence score
             let itemClass = 'warning';
-            if (indicator.toLowerCase().includes('ai-generated') || 
-                indicator.toLowerCase().includes('deepfake') ||
-                indicator.toLowerCase().includes('artificial')) {
+            if (confidence > 70) {
                 itemClass = 'danger';
-            } else if (indicator.toLowerCase().includes('natural') ||
-                       indicator.toLowerCase().includes('authentic') ||
-                       indicator.toLowerCase().includes('human') ||
-                       indicator.toLowerCase().includes('no')) {
+            } else if (confidence < 30) {
                 itemClass = 'success';
             }
             
-            // Extract label (remove confidence percentage)
-            const label = indicator.replace(/\s*\(.*?\)\s*/g, '').trim();
+            // Extract label (keep the weightage info)
+            const label = indicator.replace(/\s*:\s*\d+\.?\d*%/, '').trim();
+            
+            // Make Gemini indicators larger and more prominent (60% weightage)
+            item.className = `indicator-item ${itemClass}`;
+            item.style.cssText = 'margin-bottom: 20px; transform: scale(1.15);';
+            item.innerHTML = this.createCircularProgress(confidence, itemClass, label, true); // Pass true for larger size
+            indicatorsList.appendChild(item);
+        });
+        
+        // Display Sightengine indicator (40% weightage) with normal size
+        sightengineIndicators.forEach(indicator => {
+            const item = document.createElement('div');
+            
+            // Extract confidence percentage from indicator text (the actual score, not weightage)
+            const confidenceMatch = indicator.match(/(\d+\.?\d*)%/);
+            const confidence = confidenceMatch ? parseFloat(confidenceMatch[1]) : 0;
+            
+            // Determine class based on confidence score
+            let itemClass = 'warning';
+            if (confidence > 70) {
+                itemClass = 'danger';
+            } else if (confidence < 30) {
+                itemClass = 'success';
+            }
+            
+            // Extract label (keep the weightage info)
+            const label = indicator.replace(/\s*:\s*\d+\.?\d*%/, '').trim();
             
             item.className = `indicator-item ${itemClass}`;
-            item.innerHTML = this.createCircularProgress(confidence, itemClass, label);
+            item.innerHTML = this.createCircularProgress(confidence, itemClass, label, false);
             indicatorsList.appendChild(item);
         });
     }
     
-    createCircularProgress(percentage, type, label) {
-        const radius = 40;
+    createCircularProgress(percentage, type, label, isLarge = false) {
+        // Make Gemini indicators larger (60% weightage)
+        const radius = isLarge ? 50 : 40;
+        const svgSize = isLarge ? 120 : 100;
+        const fontSize = isLarge ? '18px' : '14px';
+        const labelSize = isLarge ? '16px' : '14px';
         const circumference = 2 * Math.PI * radius;
         const offset = circumference - (percentage / 100) * circumference;
+        const center = svgSize / 2;
         
         return `
-            <div class="circular-progress">
-                <svg width="100" height="100">
-                    <circle class="circular-progress-bg" cx="50" cy="50" r="${radius}"></circle>
+            <div class="circular-progress" style="${isLarge ? 'margin-bottom: 10px;' : ''}">
+                <svg width="${svgSize}" height="${svgSize}">
+                    <circle class="circular-progress-bg" cx="${center}" cy="${center}" r="${radius}"></circle>
                     <circle class="circular-progress-bar ${type}" 
-                            cx="50" cy="50" r="${radius}"
+                            cx="${center}" cy="${center}" r="${radius}"
                             stroke-dasharray="${circumference}"
-                            stroke-dashoffset="${offset}">
+                            stroke-dashoffset="${offset}"
+                            ${isLarge ? 'stroke-width="4"' : ''}>
                     </circle>
                 </svg>
-                <div class="circular-progress-text">${percentage}%</div>
+                <div class="circular-progress-text" style="font-size: ${fontSize}; font-weight: ${isLarge ? 'bold' : 'normal'};">${percentage}%</div>
             </div>
-            <div class="indicator-label">${label}</div>
+            <div class="indicator-label" style="font-size: ${labelSize}; font-weight: ${isLarge ? 'bold' : 'normal'}; ${isLarge ? 'color: #0066cc;' : ''}">${label}</div>
         `;
     }
     
@@ -1846,6 +1992,18 @@ class DeepfakeScanner {
         // Generated AI Analysis tab
         const aiGeneratedTab = document.getElementById('aiGeneratedAnalysis');
         aiGeneratedTab.innerHTML = this.formatAIGeneratedAnalysis(results, analysis);
+        
+        // Show transcript badge if transcript analysis is available
+        const transcriptBadge = document.getElementById('transcriptBadge');
+        if (transcriptBadge) {
+            const hasTranscript = !!(analysis.transcript || results.transcript || analysis.transcript_analysis || results.transcript_analysis);
+            if (hasTranscript) {
+                console.log('🎙️ Showing transcript badge in UI');
+                transcriptBadge.style.display = 'inline-block';
+            } else {
+                transcriptBadge.style.display = 'none';
+            }
+        }
     }
     
     formatGeneralAnalysis(results, analysis) {
@@ -1853,10 +2011,16 @@ class DeepfakeScanner {
         html += '<h4>Overall Assessment</h4>';
         html += `<p>Confidence Score: ${Math.round((analysis.confidence_score || 0) * 100)}%</p>`;
         html += `<p>AI-Generated Content: ${analysis.is_ai_generated ? 'Yes' : 'No'}</p>`;
-        html += `<p>Deepfake Detected: ${analysis.is_deepfake ? 'Yes' : 'No'}</p>`;
+        // Only show deepfake detection for images with faces (hasFaces === true)
+        if (this.hasFaces === true) {
+            html += `<p>Deepfake Detected: ${analysis.is_deepfake ? 'Yes' : 'No'}</p>`;
+        }
         html += `<p>Risk Level: ${this.getRiskLevel(analysis.confidence_score || 0)}</p>`;
         if (analysis.method) {
             html += `<p>Detection Method: ${analysis.method}</p>`;
+        }
+        if (analysis.weightage) {
+            html += `<p>Analysis Weightage: ${analysis.weightage}</p>`;
         }
         html += '</div>';
         
@@ -2082,6 +2246,101 @@ class DeepfakeScanner {
             html += '</div>';
         }
         
+        // Transcript Analysis Section (for videos with transcript)
+        if (analysis.transcript || results.transcript) {
+            const transcript = analysis.transcript || results.transcript;
+            const transcriptAnalysis = analysis.transcript_analysis || results.transcript_analysis;
+            
+            console.log('📝 FORMATTING TRANSCRIPT ANALYSIS SECTION');
+            console.log('  - Transcript available:', !!transcript);
+            console.log('  - Transcript length:', transcript?.length || 0);
+            console.log('  - Transcript analysis available:', !!transcriptAnalysis);
+            
+            if (transcriptAnalysis) {
+                console.log('  - Transcript analysis confidence:', transcriptAnalysis.confidence_score);
+                console.log('  - Is impersonation:', transcriptAnalysis.is_impersonation);
+                console.log('  - Scam type:', transcriptAnalysis.scam_type);
+                console.log('  - Indicators count:', transcriptAnalysis.indicators?.length || 0);
+            }
+            
+            html += '<div class="analysis-item">';
+            html += '<h4>🎙️ Audio Transcript Analysis</h4>';
+            
+            if (transcriptAnalysis) {
+                // Display transcript analysis scores in a clean format
+                html += `<div class="score-display" style="margin-bottom: 20px;">`;
+                
+                if (transcriptAnalysis.confidence_score !== undefined) {
+                    const scorePercent = Math.round(transcriptAnalysis.confidence_score * 100);
+                    html += `<div class="score-item ${transcriptAnalysis.confidence_score > 0.5 ? 'warning' : 'success'}" style="margin-bottom: 10px; padding: 12px; background: ${transcriptAnalysis.confidence_score > 0.5 ? '#fff3cd' : '#d4edda'}; border-radius: 6px; border-left: 4px solid ${transcriptAnalysis.confidence_score > 0.5 ? '#ffc107' : '#28a745'};">`;
+                    html += `<span class="score-label" style="font-weight: bold; font-size: 16px; color: #000000;">AI/Deepfake Confidence:</span>`;
+                    html += `<span class="score-value" style="font-size: 1.5em; margin-left: 10px; font-weight: bold; color: ${transcriptAnalysis.confidence_score > 0.5 ? '#856404' : '#155724'};">${scorePercent}%</span>`;
+                    html += `</div>`;
+                }
+                
+                html += `</div>`;
+                
+                // Impersonation and Scam alerts
+                if (transcriptAnalysis.is_impersonation) {
+                    html += `<div class="alert alert-danger" style="margin-bottom: 15px; padding: 12px; border-radius: 6px; background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24;">`;
+                    html += `<strong style="font-size: 16px;">⚠️ Impersonation Detected!</strong>`;
+                    if (transcriptAnalysis.impersonation_target) {
+                        html += `<br><span style="margin-top: 8px; display: block; font-size: 14px;">Target: <strong>${transcriptAnalysis.impersonation_target}</strong></span>`;
+                    }
+                    html += `</div>`;
+                }
+                
+                if (transcriptAnalysis.scam_type) {
+                    html += `<div class="alert alert-danger" style="margin-bottom: 15px; padding: 12px; border-radius: 6px; background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24;">`;
+                    html += `<strong style="font-size: 16px;">🚨 Scam Detected!</strong><br>`;
+                    html += `<span style="margin-top: 8px; display: block; font-size: 14px;">Type: <strong>${transcriptAnalysis.scam_type}</strong></span>`;
+                    html += `</div>`;
+                }
+                
+                // Display specific indicators in a clean CSV-like format
+                if (transcriptAnalysis.indicators && transcriptAnalysis.indicators.length > 0) {
+                    html += `<div class="transcript-indicators" style="margin-top: 20px;">`;
+                    html += `<h5 style="margin-bottom: 12px; font-weight: bold; font-size: 16px; color: #ffffff;">Detected Indicators:</h5>`;
+                    html += `<div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border-left: 4px solid #0066cc;">`;
+                    html += `<ul style="margin: 0; padding-left: 20px; list-style-type: disc;">`;
+                    transcriptAnalysis.indicators.forEach(indicator => {
+                        html += `<li style="margin-bottom: 10px; line-height: 1.6; font-size: 14px; color: #555;">${indicator}</li>`;
+                    });
+                    html += `</ul>`;
+                    html += `</div>`;
+                    html += `</div>`;
+                }
+                
+                // Analysis reasoning
+                if (transcriptAnalysis.reasoning) {
+                    console.log('  - Rendering reasoning');
+                    html += `<div style="margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 6px; border-left: 4px solid #0066cc;">`;
+                    html += `<h5 style="margin-top: 0; margin-bottom: 10px; font-weight: bold; font-size: 16px; color: #333;">Analysis:</h5>`;
+                    html += `<p style="margin: 0; line-height: 1.7; color: #333; font-size: 14px;">${transcriptAnalysis.reasoning}</p>`;
+                    html += `</div>`;
+                }
+            } else {
+                console.warn('⚠️ Transcript analysis object not available for display');
+            }
+            
+            // Display transcript text in a clean format
+            if (transcript) {
+                console.log('📝 DISPLAYING TRANSCRIPT TEXT IN UI');
+                console.log('  - Transcript length:', transcript.length, 'characters');
+                html += `<div class="transcript-text" style="margin-top: 20px;">`;
+                html += `<h5 style="margin-bottom: 10px; font-weight: bold; font-size: 16px; color: #ffffff;">Transcript:</h5>`;
+                html += `<div class="transcript-content" style="background: #f5f5f5; padding: 15px; border-radius: 8px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.7; border: 1px solid #ddd; color: #333;">`;
+                html += transcript.replace(/\n/g, '<br>');
+                html += `</div>`;
+                html += `</div>`;
+            } else {
+                console.warn('⚠️ Transcript text not available for display');
+            }
+            
+            console.log('✅ TRANSCRIPT ANALYSIS SECTION HTML GENERATED');
+            html += '</div>';
+        }
+        
         // Technical Properties Section (only show if properties are available)
         if (results.properties && (results.properties.format || results.properties.width || results.properties.height || results.properties.exif)) {
             html += '<div class="analysis-item">';
@@ -2143,10 +2402,23 @@ class DeepfakeScanner {
         
         // VIDEOS: 100% SightEngine only
         if (!isImage || this.hasFaces === null) {
+            // Filter out deepfake indicators for videos
+            const indicators = combined.analysis.indicators || [];
+            const filteredIndicators = indicators.filter(indicator => {
+                const lowerIndicator = indicator.toLowerCase();
+                return !lowerIndicator.includes('deepfake');
+            });
+            
             combined.analysis.method = 'sightengine_video';
             combined.analysis.confidence_score = seAIScore;
-            combined.ml_result = null;
+            combined.analysis.ai_generated_score = seAIScore;
+            combined.analysis.is_ai_generated = seAIScore > 0.5;
+            combined.analysis.deepfake_score = 0; // No deepfake for videos
+            combined.analysis.is_deepfake = false; // No deepfake for videos
+            combined.analysis.indicators = filteredIndicators; // Filtered indicators (no deepfake)
             combined.analysis.weightage = '100% SightEngine (Video)';
+            combined.analysis.has_faces = null; // Videos don't use face selection
+            combined.ml_result = null; // No ML for videos
             return combined;
         }
         
