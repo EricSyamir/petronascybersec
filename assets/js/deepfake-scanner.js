@@ -1437,12 +1437,15 @@ class DeepfakeScanner {
             if (results.type.deepfake !== undefined) {
                 deepfakeScore = parseFloat(results.type.deepfake);
                 
-                if (deepfakeScore > 0.5) {
-                    isDeepfake = true;
-                    isAIGenerated = true;
-                    indicators.push(`Deepfake detected (confidence: ${Math.round(deepfakeScore * 100)}%)`);
-                } else {
-                    indicators.push(`No deepfake detected (authenticity: ${Math.round((1 - deepfakeScore) * 100)}%)`);
+                // Only add deepfake indicators if face button was selected (hasFaces === true)
+                if (this.hasFaces === true) {
+                    if (deepfakeScore > 0.5) {
+                        isDeepfake = true;
+                        isAIGenerated = true;
+                        indicators.push(`Deepfake detected (confidence: ${Math.round(deepfakeScore * 100)}%)`);
+                    } else {
+                        indicators.push(`No deepfake detected (authenticity: ${Math.round((1 - deepfakeScore) * 100)}%)`);
+                    }
                 }
                 
                 // Use max of both scores
@@ -1638,7 +1641,16 @@ class DeepfakeScanner {
         const indicatorsList = document.getElementById('indicatorsList');
         indicatorsList.innerHTML = '';
         
-        if (indicators.length === 0) {
+        // Filter out deepfake-related indicators if no face button was selected
+        let filteredIndicators = indicators;
+        if (this.hasFaces === false || this.hasFaces === null) {
+            filteredIndicators = indicators.filter(indicator => {
+                const lowerIndicator = indicator.toLowerCase();
+                return !lowerIndicator.includes('deepfake');
+            });
+        }
+        
+        if (filteredIndicators.length === 0) {
             const item = document.createElement('div');
             item.className = 'indicator-item success';
             item.innerHTML = '<span>✓</span> <span>No suspicious indicators found</span>';
@@ -1646,7 +1658,7 @@ class DeepfakeScanner {
             return;
         }
         
-        indicators.forEach(indicator => {
+        filteredIndicators.forEach(indicator => {
             const item = document.createElement('div');
             
             // Extract confidence percentage from indicator text
@@ -1808,9 +1820,28 @@ class DeepfakeScanner {
         const generalTab = document.getElementById('generalAnalysis');
         generalTab.innerHTML = this.formatGeneralAnalysis(results, analysis);
         
-        // Deepfake Analysis tab
-        const deepfakeTab = document.getElementById('deepfakeAnalysis');
-        deepfakeTab.innerHTML = this.formatDeepfakeAnalysis(results, analysis);
+        // Deepfake Analysis tab - only show if face button was selected (hasFaces === true)
+        const deepfakeTabButton = document.querySelector('.analysis-tab[data-tab="deepfake"]');
+        const deepfakeTab = document.getElementById('deepfakeTab');
+        
+        if (this.hasFaces === true) {
+            // Show deepfake tab
+            if (deepfakeTabButton) {
+                deepfakeTabButton.style.display = 'flex';
+            }
+            if (deepfakeTab) {
+                deepfakeTab.innerHTML = this.formatDeepfakeAnalysis(results, analysis);
+            }
+        } else {
+            // Hide deepfake tab if no face button was selected
+            if (deepfakeTabButton) {
+                deepfakeTabButton.style.display = 'none';
+            }
+            // If deepfake tab is currently active, switch to general tab
+            if (deepfakeTab && deepfakeTab.classList.contains('active')) {
+                showTab('general');
+            }
+        }
         
         // Generated AI Analysis tab
         const aiGeneratedTab = document.getElementById('aiGeneratedAnalysis');

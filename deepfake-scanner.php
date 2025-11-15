@@ -288,7 +288,7 @@ $baseUrl = $protocol . '://' . $host . $basePath;
                             <span class="tab-icon">📊</span>
                             <span class="tab-label">General</span>
                         </button>
-                        <button class="analysis-tab" data-tab="deepfake" onclick="showTab('deepfake')">
+                        <button class="analysis-tab" data-tab="deepfake" onclick="showTab('deepfake')" style="display: none;">
                             <span class="tab-icon">🎭</span>
                             <span class="tab-label">Deepfake Analysis</span>
                         </button>
