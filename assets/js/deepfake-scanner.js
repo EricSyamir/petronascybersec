@@ -986,9 +986,6 @@ class DeepfakeScanner {
             
             // Add ELA result (doesn't affect AI detection weightage, just for display)
             combinedResult.ela_result = elaResult;
-            console.log('🔍 [ELA DEBUG] Combined result with ELA:', combinedResult);
-            console.log('🔍 [ELA DEBUG] Combined result.ela_result:', combinedResult.ela_result);
-            console.log('🔍 [ELA DEBUG] Combined result.analysis:', combinedResult.analysis);
             
             this.setProgress(100, 'Analysis complete!');
             setTimeout(() => {
@@ -1112,22 +1109,10 @@ class DeepfakeScanner {
             
             // Get ELA result from SightEngine response (if available)
             let elaResult = sightEngineResult.ela_result || null;
-            console.log('🔍 [ELA DEBUG] SightEngine response:', sightEngineResult);
-            console.log('🔍 [ELA DEBUG] SightEngine response keys:', Object.keys(sightEngineResult));
-            console.log('🔍 [ELA DEBUG] ELA result extracted:', elaResult);
             
             // Check for ELA error in response
             if (sightEngineResult.ela_error) {
-                console.error('❌ [ELA DEBUG] ELA Error from server:', sightEngineResult.ela_error);
-            }
-            
-            if (elaResult) {
-                console.log('✅ [ELA DEBUG] ELA analysis completed:', elaResult);
-                console.log('✅ [ELA DEBUG] ELA output_url:', elaResult.output_url);
-                console.log('✅ [ELA DEBUG] ELA result keys:', Object.keys(elaResult));
-            } else {
-                console.warn('⚠️ [ELA DEBUG] No ELA result found in SightEngine response');
-                console.warn('⚠️ [ELA DEBUG] Check PHP error logs for ELA DEBUG messages');
+                console.error('ELA Error from server:', sightEngineResult.ela_error);
             }
             
             // For videos, skip face selection and use 100% SightEngine
@@ -1138,7 +1123,6 @@ class DeepfakeScanner {
                 // For videos: 100% SightEngine only
                 const combinedResult = this.combineResults(sightEngineResult.detection, null, isImage);
                 combinedResult.ela_result = null; // No ELA for videos
-                console.log('🔍 [ELA DEBUG] Video detected - ELA disabled');
                 
                 this.setProgress(100, 'Analysis complete!');
                 setTimeout(() => {
@@ -1390,23 +1374,12 @@ class DeepfakeScanner {
         this.updateDetailedAnalysis(results, analysis);
         
         // Display ELA results if available (check multiple possible locations)
-        console.log('🔍 [ELA DEBUG] displayResults called');
-        console.log('🔍 [ELA DEBUG] analysis object:', analysis);
-        console.log('🔍 [ELA DEBUG] detection object:', detection);
-        console.log('🔍 [ELA DEBUG] analysis.ela_result:', analysis.ela_result);
-        console.log('🔍 [ELA DEBUG] detection?.ela_result:', detection?.ela_result);
-        console.log('🔍 [ELA DEBUG] detection?.analysis?.ela_result:', detection?.analysis?.ela_result);
-        
         const elaResult = analysis.ela_result || detection?.ela_result || detection?.analysis?.ela_result;
-        console.log('🔍 [ELA DEBUG] Final elaResult:', elaResult);
         
         if (elaResult) {
             // Store ELA result in analysis object for easy access
             analysis.ela_result = elaResult;
-            console.log('✅ [ELA DEBUG] ELA result found, calling displayELAResults');
             this.displayELAResults(elaResult);
-        } else {
-            console.warn('⚠️ [ELA DEBUG] No ELA result found in any location');
         }
         
         // Add to recent scans
@@ -1822,125 +1795,6 @@ class DeepfakeScanner {
         });
     }
     
-    /**
-     * Show Combined Mapping button AND image in the preview section
-     */
-    showCombinedMappingInPreview(analysis) {
-        console.log('🔍 [ELA DEBUG] showCombinedMappingInPreview called');
-        console.log('🔍 [ELA DEBUG] analysis parameter:', analysis);
-        console.log('🔍 [ELA DEBUG] analysis?.ela_result:', analysis?.ela_result);
-        
-        const buttonSection = document.getElementById('combinedMappingButtonSection');
-        
-        if (!buttonSection) {
-            console.error('❌ [ELA DEBUG] Combined mapping button section NOT FOUND in HTML!');
-            console.error('❌ [ELA DEBUG] Looking for element with id: combinedMappingButtonSection');
-            return;
-        }
-        
-        console.log('✅ [ELA DEBUG] Button section found:', buttonSection);
-        console.log('🔍 [ELA DEBUG] Current display style:', buttonSection.style.display);
-        
-        // Check if ELA result is available
-        const elaResult = analysis?.ela_result;
-        
-        console.log('🔍 [ELA DEBUG] ELA Result check:', elaResult);
-        console.log('🔍 [ELA DEBUG] elaResult?.output_url:', elaResult?.output_url);
-        
-        if (elaResult && elaResult.output_url) {
-            console.log('✅ [ELA DEBUG] ELA result found with output_url, showing section');
-            // Clear existing content in button section
-            buttonSection.innerHTML = '';
-            buttonSection.style.display = 'block';
-            
-            // Add title/label
-            const title = document.createElement('div');
-            title.style.cssText = `
-                font-weight: 600;
-                color: var(--petronas-teal);
-                font-size: 1.1rem;
-                margin-bottom: 15px;
-                text-align: left;
-            `;
-            title.innerHTML = '🔍 Combined ELA Mapping:';
-            buttonSection.appendChild(title);
-            
-            // Add the ELA overlay image
-            const mappingImage = document.createElement('img');
-            mappingImage.src = elaResult.output_url;
-            mappingImage.alt = 'ELA Combined Mapping';
-            mappingImage.style.cssText = `
-                width: 100%;
-                max-width: 100%;
-                height: auto;
-                border-radius: 8px;
-                border: 2px solid var(--petronas-teal);
-                cursor: pointer;
-                transition: transform 0.3s ease, box-shadow 0.3s ease;
-                margin-bottom: 15px;
-            `;
-            
-            // Add hover effect
-            mappingImage.addEventListener('mouseenter', () => {
-                mappingImage.style.transform = 'scale(1.02)';
-                mappingImage.style.boxShadow = '0 0 20px rgba(0, 161, 156, 0.6), 0 0 40px rgba(0, 161, 156, 0.3)';
-            });
-            mappingImage.addEventListener('mouseleave', () => {
-                mappingImage.style.transform = 'scale(1)';
-                mappingImage.style.boxShadow = 'none';
-            });
-            
-            // Click to open in modal
-            mappingImage.addEventListener('click', () => {
-                this.openImageModal(elaResult.output_url);
-            });
-            
-            buttonSection.appendChild(mappingImage);
-            
-            // Add the button
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = 'btn btn-primary btn-large';
-            button.onclick = () => this.openImageModal(elaResult.output_url);
-            button.style.cssText = `
-                width: 100%;
-                padding: 15px 30px;
-                font-size: 1.1rem;
-                font-weight: 600;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                margin-bottom: 10px;
-            `;
-            button.innerHTML = '<span>🔗 View Full Size Combined Mapping</span>';
-            buttonSection.appendChild(button);
-            
-            // Add description
-            const description = document.createElement('div');
-            description.style.cssText = `
-                color: rgba(255, 255, 255, 0.8);
-                font-size: 0.9rem;
-                font-style: italic;
-                text-align: center;
-            `;
-            description.textContent = 'Red areas indicate potential tampering detected by Error Level Analysis';
-            buttonSection.appendChild(description);
-            
-            console.log('✅ [ELA DEBUG] Combined mapping section populated and displayed');
-            console.log('✅ [ELA DEBUG] Image URL:', elaResult.output_url);
-            console.log('✅ [ELA DEBUG] Final display style:', buttonSection.style.display);
-            
-        } else {
-            // Hide the button section if no ELA
-            buttonSection.style.display = 'none';
-            console.warn('⚠️ [ELA DEBUG] No ELA result available - hiding section');
-            if (!elaResult) {
-                console.warn('⚠️ [ELA DEBUG] elaResult is null/undefined');
-            } else if (!elaResult.output_url) {
-                console.warn('⚠️ [ELA DEBUG] elaResult exists but output_url is missing:', elaResult);
-            }
-        }
-    }
-    
     showEducationBanner(isDangerous = false) {
         const modal = document.getElementById('educationModal');
         if (modal) {
@@ -2240,22 +2094,13 @@ class DeepfakeScanner {
         const combined = JSON.parse(JSON.stringify(sightEngineDetection)); // Deep copy
         
         // Preserve ELA result if it exists in the detection
-        console.log('🔍 [ELA DEBUG] combineResults - sightEngineDetection:', sightEngineDetection);
-        console.log('🔍 [ELA DEBUG] combineResults - sightEngineDetection?.ela_result:', sightEngineDetection?.ela_result);
-        console.log('🔍 [ELA DEBUG] combineResults - sightEngineDetection?.analysis?.ela_result:', sightEngineDetection?.analysis?.ela_result);
-        
         if (sightEngineDetection?.ela_result) {
             combined.ela_result = sightEngineDetection.ela_result;
-            console.log('✅ [ELA DEBUG] Preserved ela_result in combined');
         }
         if (sightEngineDetection?.analysis?.ela_result) {
             if (!combined.analysis) combined.analysis = {};
             combined.analysis.ela_result = sightEngineDetection.analysis.ela_result;
-            console.log('✅ [ELA DEBUG] Preserved ela_result in combined.analysis');
         }
-        
-        console.log('🔍 [ELA DEBUG] combineResults - final combined.ela_result:', combined.ela_result);
-        console.log('🔍 [ELA DEBUG] combineResults - final combined.analysis?.ela_result:', combined.analysis?.ela_result);
         
         // Extract SightEngine scores
         const seAnalysis = combined.analysis || {};
@@ -2655,31 +2500,6 @@ class DeepfakeScanner {
         }
         
         imagesGrid.innerHTML = html;
-    }
-    
-    /**
-     * Show combined mapping visualization
-     */
-    showCombinedMapping() {
-        // Try multiple locations for ELA result
-        const elaResult = this.currentAnalysisResult?.analysis?.ela_result || 
-                         this.currentAnalysisResult?.ela_result;
-        
-        if (!elaResult) {
-            this.showAlert('Combined mapping not available. ELA analysis may not have completed.', 'warning');
-            return;
-        }
-        
-        // Use output_url (overlay image) if available
-        const imageUrl = elaResult.output_url;
-        
-        if (!imageUrl) {
-            this.showAlert('ELA visualization images not available', 'warning');
-            return;
-        }
-        
-        // Open overlay image in modal
-        this.openImageModal(imageUrl);
     }
     
     /**

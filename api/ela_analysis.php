@@ -39,18 +39,12 @@ function runELAAnalysis($filePath, $quality = 75, $outputDir = null) {
     
     $command .= " 2>&1"; // Redirect stderr to stdout
     
-    // Log command for debugging
-    error_log("ELA DEBUG: Executing command: " . $command);
-    
     // Execute command with shell_exec (same as holehe)
     $output = shell_exec($command);
     
-    error_log("ELA DEBUG: Command output length: " . strlen($output ?? ''));
-    error_log("ELA DEBUG: Command output (first 500 chars): " . substr($output ?? '', 0, 500));
-    
     if ($output === null || trim($output) === '') {
-        $errorMsg = 'Failed to execute ELA analysis. Make sure Python and required libraries are installed. Command: ' . $command;
-        error_log("ELA DEBUG ERROR: " . $errorMsg);
+        $errorMsg = 'Failed to execute ELA analysis. Make sure Python and required libraries are installed.';
+        error_log("ELA Error: " . $errorMsg);
         throw new Exception($errorMsg);
     }
     
@@ -62,27 +56,21 @@ function runELAAnalysis($filePath, $quality = 75, $outputDir = null) {
         // If JSON decode fails, check if it's an error message
         if (strpos($output, 'not installed') !== false || strpos($output, 'not found') !== false || strpos($output, 'Error') !== false) {
             $errorMsg = 'ELA analysis failed: ' . substr($output, 0, 500);
-            error_log("ELA DEBUG ERROR: " . $errorMsg);
+            error_log("ELA Error: " . $errorMsg);
             throw new Exception($errorMsg);
         }
         
         $errorMsg = 'Invalid JSON response from ELA script. Output: ' . substr($output, 0, 500);
-        error_log("ELA DEBUG ERROR: " . $errorMsg);
-        error_log("ELA DEBUG: JSON decode error: " . json_last_error_msg());
+        error_log("ELA Error: " . $errorMsg . " - JSON decode error: " . json_last_error_msg());
         throw new Exception($errorMsg);
     }
-    
-    error_log("ELA DEBUG: JSON decoded successfully");
-    error_log("ELA DEBUG: Result keys: " . implode(', ', array_keys($result)));
     
     // Check if the Python script returned an error
     if (isset($result['error'])) {
         $errorMsg = 'ELA analysis error: ' . $result['error'];
-        error_log("ELA DEBUG ERROR: " . $errorMsg);
+        error_log("ELA Error: " . $errorMsg);
         throw new Exception($errorMsg);
     }
-    
-    error_log("ELA DEBUG: ELA analysis successful, output_path: " . ($result['output_path'] ?? 'NOT SET'));
     
     // Calculate confidence score based on ELA metrics
     $confidenceScore = calculateELAConfidence(
@@ -103,9 +91,6 @@ function runELAAnalysis($filePath, $quality = 75, $outputDir = null) {
     $scriptPath = str_replace('\\', '/', dirname(dirname($_SERVER['SCRIPT_NAME'])));
     $basePath = rtrim($scriptPath, '/');
     
-    error_log("ELA DEBUG: Document root: " . $docRootNormalized);
-    error_log("ELA DEBUG: Script path (base): " . $basePath);
-    
     // Normalize paths for Windows compatibility and convert to web-accessible URLs
     $normalizePath = function($path) use ($docRootNormalized, $basePath) {
         if (empty($path)) {
@@ -114,13 +99,10 @@ function runELAAnalysis($filePath, $quality = 75, $outputDir = null) {
         
         $pathNormalized = str_replace('\\', '/', $path);
         
-        error_log("ELA DEBUG: Normalizing path: " . $pathNormalized);
-        
         // Check if path is within document root
         if (strpos($pathNormalized, $docRootNormalized) === 0) {
             $relativePath = substr($pathNormalized, strlen($docRootNormalized));
             $relativePath = ltrim($relativePath, '/');
-            error_log("ELA DEBUG: Relative path (from doc root): " . $relativePath);
             return $relativePath;
         }
         
@@ -129,17 +111,13 @@ function runELAAnalysis($filePath, $quality = 75, $outputDir = null) {
         $projectRoot = str_replace('\\', '/', dirname(dirname(__DIR__)));
         $projectRootNormalized = rtrim($projectRoot, '/');
         
-        error_log("ELA DEBUG: Project root: " . $projectRootNormalized);
-        
         if (strpos($pathNormalized, $projectRootNormalized) === 0) {
             $relativePath = substr($pathNormalized, strlen($projectRootNormalized));
             $relativePath = ltrim($relativePath, '/');
-            error_log("ELA DEBUG: Relative path (from project root): " . $relativePath);
             
             // Prepend base path to make it web-accessible
             if ($basePath && $basePath !== '/') {
                 $relativePath = ltrim($basePath, '/') . '/' . $relativePath;
-                error_log("ELA DEBUG: Relative path with base: " . $relativePath);
             }
             
             return $relativePath;
@@ -155,12 +133,10 @@ function runELAAnalysis($filePath, $quality = 75, $outputDir = null) {
                 $relativePath = ltrim($basePath, '/') . '/' . $relativePath;
             }
             
-            error_log("ELA DEBUG: Relative path (extracted with base): " . $relativePath);
             return $relativePath;
         }
         
         // Last resort: return as-is
-        error_log("ELA DEBUG: Using path as-is: " . $pathNormalized);
         return $pathNormalized;
     };
     
@@ -169,7 +145,6 @@ function runELAAnalysis($filePath, $quality = 75, $outputDir = null) {
         $relativePath = $normalizePath($result['output_path']);
         if ($relativePath) {
             $result['output_url'] = '/' . $relativePath;
-            error_log("ELA DEBUG: output_url: " . $result['output_url']);
         }
     }
     

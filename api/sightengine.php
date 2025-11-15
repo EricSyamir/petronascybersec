@@ -590,32 +590,21 @@ if (basename($_SERVER['PHP_SELF']) === 'sightengine.php' && isset($_SERVER['REQU
                     $fileExtension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
                     $isImageForELA = in_array($fileExtension, ['jpg', 'jpeg', 'png']);
                     
-                    error_log("ELA DEBUG: File extension: $fileExtension, isImageForELA: " . ($isImageForELA ? 'true' : 'false'));
-                    
                     if ($isImageForELA) {
                         try {
-                            error_log("ELA DEBUG: Starting ELA analysis for file: $filePath");
-                            
                             // Include ELA analysis functions
                             require_once __DIR__ . '/ela_analysis.php';
                             
                             // Run ELA analysis with quality 75
                             $elaResult = runELAAnalysis($filePath, 75);
                             
-                            error_log("ELA DEBUG: ELA analysis completed successfully");
-                            error_log("ELA DEBUG: ELA result keys: " . implode(', ', array_keys($elaResult)));
-                            error_log("ELA DEBUG: ELA output_url: " . ($elaResult['output_url'] ?? 'NOT SET'));
-                            
                         } catch (Exception $elaError) {
                             // ELA is optional, log error but continue
                             $errorMsg = "ELA analysis error (non-critical): " . $elaError->getMessage();
                             error_log($errorMsg);
-                            error_log("ELA DEBUG: Exception trace: " . $elaError->getTraceAsString());
                             $elaResult = null;
                             $elaError = $errorMsg;
                         }
-                    } else {
-                        error_log("ELA DEBUG: Skipping ELA - not a JPG/PNG image");
                     }
                     
                     $response = [
@@ -627,7 +616,6 @@ if (basename($_SERVER['PHP_SELF']) === 'sightengine.php' && isset($_SERVER['REQU
                     
                     // Add ELA result to detection object if available
                     if ($elaResult !== null) {
-                        error_log("ELA DEBUG: Adding ELA result to response");
                         $response['ela_result'] = $elaResult;
                         // Also add to detection for easier access
                         if (isset($detection['analysis'])) {
@@ -635,7 +623,6 @@ if (basename($_SERVER['PHP_SELF']) === 'sightengine.php' && isset($_SERVER['REQU
                         }
                         $response['detection'] = $detection;
                     } else {
-                        error_log("ELA DEBUG: ELA result is null - NOT adding to response");
                         if ($elaError) {
                             $response['ela_error'] = $elaError; // Include error in response for debugging
                         }
