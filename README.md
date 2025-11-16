@@ -1,6 +1,17 @@
 # VeriDeep by SecureTech
+<div>
+  <p align="center">
+    <img src="verideep_banner.jpg" width="400"> 
+  </p>
+</div>
 
 **Advanced AI-Powered Deepfake Detection Platform**
+
+<div>
+  <p align="center">
+    <img src="AI part 1.gif" width="500"> 
+  </p>
+</div>
 
 ---
 
@@ -35,6 +46,31 @@
 
 ---
 
+## Example Usage
+
+### 🚓 Fake Media
+<div>
+  <p align="center">
+    <img src="AI part 1.gif" width="600"> 
+  </p>
+</div>
+
+<div>
+  <p align="center">
+    <img src="ai part 2.gif" width="600"> 
+  </p>
+</div>
+
+### 🎞 Real Media
+<div>
+  <p align="center">
+    <img src="real_real.gif" width="600"> 
+  </p>
+</div>
+
+---
+
+
 ## 🛠️ Technology Stack
 
 ### Core Technologies
@@ -52,6 +88,12 @@
 - **HaveIBeenPwned**: Data breach checking
 - **Semak Mule**: Malaysian scammer database
 
+## Architecture Diagram
+<div>
+  <p align="center">
+    <img src="arch diagram.jpeg" width="600"> 
+  </p>
+</div>
 ---
 
 ## 🚀 Quick Start
@@ -165,21 +207,12 @@ Final Score = (Sightengine AI Score × 0.6) + (ML Model Score × 0.4)
 
 ### Innovation Points
 
-**Video Detection:**
-✅ **First-of-its-kind**: Combined audio transcript + visual analysis for video deepfake detection  
-✅ **Intelligent Weighting**: 60/40 split prioritizes transcript analysis (more reliable for impersonation detection)
-
-**Image Detection:**
-✅ **Adaptive Multi-Model System**: Different weightage strategies based on image content (faces vs. no faces)  
-✅ **Triple-Layer Detection**: Combines Sightengine API, local ML model, and ELA for comprehensive analysis  
-✅ **Face-Aware Analysis**: Specialized deepfake detection when faces are present (60/20/20 weightage)  
-✅ **Robust Fallback System**: Graceful degradation ensures analysis continues even if components fail
-
-**General:**
-✅ **Real-time Processing**: Fast analysis with comprehensive reporting  
-✅ **Multi-format Support**: Handles both images and videos seamlessly  
-✅ **Forensic-Level Analysis**: ELA provides pixel-level tampering detection for JPEG images  
-
+- ✅ **First-of-its-kind**: Combined audio transcript + visual analysis for video deepfake detection  
+- ✅ **Intelligent Weighting**: 60/40 split prioritizes transcript analysis (more reliable for impersonation detection)  
+- ✅ **Face-Aware Analysis**: Specialized deepfake detection when faces are present (60/20/20 weightage) 
+- ✅ **Triple-Layer Detection**: Combines Sightengine API, local ML model, and ELA for comprehensive analysis  
+- ✅ **Adaptive Multi-Model System**: Different weightage strategies based on image content (faces vs. no faces)  
+ 
 ### Technical Excellence
 - **Robust Error Handling**: Graceful fallbacks if one analysis method fails
 - **Comprehensive Logging**: Detailed error logs for debugging
@@ -223,11 +256,6 @@ petronas-cybercrime-platform/
 ```
 
 ---
-
-## 🧪 Testing
-
-### Test Video Transcription
-Access `test-gemini-transcript.php` to test Gemini video transcription independently.
 
 ### Demo Scenarios
 
@@ -275,6 +303,11 @@ Access `test-gemini-transcript.php` to test Gemini video transcription independe
 
 **SecureTech**  
 *Advanced Cybersecurity Solutions*
+- Eric
+- Syafi
+- Almas
+- Haiqal
+- Irfan
 
 ---
 
@@ -286,17 +319,7 @@ This project is provided for educational and demonstration purposes.
 
 ## 🔗 Links
 
-- **Repository**: https://github.com/EricSyamir/petronascybersec
-- **Demo**: Access via `deepfake-scanner.php` after installation
+- [Repository](https://github.com/EricSyamir/petronascybersec)
+- [Project Report](https://github.com/EricSyamir/petronascybersec/blob/main/SYSTEM_REPORT.md)
+- [Slides Presentation](https://www.canva.com/design/DAG4u2iozz8/HtrALtwViLWlkevRud_QlA/edit?utm_content=DAG4u2iozz8&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)
 
----
-
-## 📞 Contact
-
-For questions or evaluation inquiries, please refer to the project repository.
-
----
-
-**Version**: 2.0.0  
-**Last Updated**: January 2025  
-**Platform**: VeriDeep by SecureTech
