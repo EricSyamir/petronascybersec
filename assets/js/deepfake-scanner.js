@@ -2766,32 +2766,6 @@ class DeepfakeScanner {
                     <h4>${suspicious ? '⚠️ Suspicious' : '✓ Normal'}</h4>
                     <span class="ela-confidence">Confidence: ${confidenceScore.toFixed(1)}%</span>
                 </div>
-                <div class="ela-statistics">
-                    <div class="ela-stat-item">
-                        <span class="stat-label">Max Error:</span>
-                        <span class="stat-value">${(elaResult.max_error || 0).toFixed(6)}</span>
-                    </div>
-                    <div class="ela-stat-item">
-                        <span class="stat-label">Mean Error:</span>
-                        <span class="stat-value">${(elaResult.mean_error || 0).toFixed(6)}</span>
-                    </div>
-                    <div class="ela-stat-item">
-                        <span class="stat-label">Error Variance:</span>
-                        <span class="stat-value">${(elaResult.error_variance || 0).toFixed(6)}</span>
-                    </div>
-                    <div class="ela-stat-item">
-                        <span class="stat-label">Error Std Dev:</span>
-                        <span class="stat-value">${(elaResult.error_std || 0).toFixed(6)}</span>
-                    </div>
-                    <div class="ela-stat-item">
-                        <span class="stat-label">Suspicious Pixels:</span>
-                        <span class="stat-value">${(elaResult.suspicious_pixels || 0).toLocaleString()}</span>
-                    </div>
-                    <div class="ela-stat-item">
-                        <span class="stat-label">Suspicious %:</span>
-                        <span class="stat-value">${suspiciousPercentage.toFixed(2)}%</span>
-                    </div>
-                </div>
                 ${suspicious ? `
                     <div class="ela-warning">
                         <p><strong>⚠️ WARNING:</strong> This image shows signs of tampering!</p>
