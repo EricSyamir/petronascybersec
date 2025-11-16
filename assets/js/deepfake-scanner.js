@@ -1773,133 +1773,74 @@ class DeepfakeScanner {
         
         console.log('📋 Has video indicators:', hasVideoIndicators);
         
-        if (hasVideoIndicators) {
-            // VIDEO: Separate Gemini (60%) and Sightengine (40%) indicators
-            const geminiIndicators = [];
-            const sightengineIndicators = [];
+        // Consistent styling for all indicators (videos and images)
+        indicators.forEach(indicator => {
+            const item = document.createElement('div');
             
-            indicators.forEach(indicator => {
-                if (indicator.toLowerCase().includes('gemini') || indicator.toLowerCase().includes('transcript')) {
-                    geminiIndicators.push(indicator);
-                } else if (indicator.toLowerCase().includes('sightengine') || indicator.toLowerCase().includes('visual')) {
-                    sightengineIndicators.push(indicator);
-                }
-            });
-            
-            // Display Gemini indicator first (60% weightage) with larger size
-            geminiIndicators.forEach(indicator => {
-                const item = document.createElement('div');
-                
-                // Extract confidence percentage from indicator text (the actual score, not weightage)
+            // Extract confidence percentage from indicator text (the percentage AFTER the colon)
+            // Format: "Label (weightage%): confidence%"
+            const colonIndex = indicator.indexOf(':');
+            let confidence = 0;
+            if (colonIndex !== -1) {
+                const confidenceMatch = indicator.substring(colonIndex + 1).match(/(\d+\.?\d*)%/);
+                confidence = confidenceMatch ? parseFloat(confidenceMatch[1]) : 0;
+            } else {
+                // Fallback: try to extract from anywhere in the string
                 const confidenceMatch = indicator.match(/(\d+\.?\d*)%/);
-                const confidence = confidenceMatch ? parseFloat(confidenceMatch[1]) : 0;
-                
-                // Determine class based on confidence score
-                let itemClass = 'warning';
-                if (confidence > 70) {
-                    itemClass = 'danger';
-                } else if (confidence < 30) {
-                    itemClass = 'success';
-                }
-                
-                // Extract label (keep the weightage info)
-                const label = indicator.replace(/\s*:\s*\d+\.?\d*%/, '').trim();
-                
-                // Make Gemini indicators larger and more prominent (60% weightage)
-                item.className = `indicator-item ${itemClass}`;
-                item.style.cssText = 'margin-bottom: 20px; transform: scale(1.15);';
-                item.innerHTML = this.createCircularProgress(confidence, itemClass, label, true); // Pass true for larger size
-                indicatorsList.appendChild(item);
-            });
+                confidence = confidenceMatch ? parseFloat(confidenceMatch[1]) : 0;
+            }
             
-            // Display Sightengine indicator (40% weightage) with normal size
-            sightengineIndicators.forEach(indicator => {
-                const item = document.createElement('div');
-                
-                // Extract confidence percentage from indicator text (the actual score, not weightage)
-                const confidenceMatch = indicator.match(/(\d+\.?\d*)%/);
-                const confidence = confidenceMatch ? parseFloat(confidenceMatch[1]) : 0;
-                
-                // Determine class based on confidence score
-                let itemClass = 'warning';
-                if (confidence > 70) {
-                    itemClass = 'danger';
-                } else if (confidence < 30) {
-                    itemClass = 'success';
-                }
-                
-                // Extract label (keep the weightage info)
-                const label = indicator.replace(/\s*:\s*\d+\.?\d*%/, '').trim();
-                
-                item.className = `indicator-item ${itemClass}`;
-                item.innerHTML = this.createCircularProgress(confidence, itemClass, label, false);
-                indicatorsList.appendChild(item);
-            });
-        } else {
-            // IMAGE: Display all indicators with their weightages
-            // For images with faces: 60% SightEngine AI Generated, 20% ML, 20% Deepfake
-            // For images without faces: 60% SightEngine AI Generated, 40% ML
+            // Determine class based on confidence score
+            let itemClass = 'warning';
+            if (confidence > 70) {
+                itemClass = 'danger';
+            } else if (confidence < 30) {
+                itemClass = 'success';
+            }
             
-            indicators.forEach(indicator => {
-                const item = document.createElement('div');
-                
-                // Extract confidence percentage from indicator text (the percentage AFTER the colon)
-                // Format: "Label (weightage%): confidence%"
-                const colonIndex = indicator.indexOf(':');
-                let confidence = 0;
-                if (colonIndex !== -1) {
-                    const confidenceMatch = indicator.substring(colonIndex + 1).match(/(\d+\.?\d*)%/);
-                    confidence = confidenceMatch ? parseFloat(confidenceMatch[1]) : 0;
-                }
-                
-                // Determine class based on confidence score
-                let itemClass = 'warning';
-                if (confidence > 70) {
-                    itemClass = 'danger';
-                } else if (confidence < 30) {
-                    itemClass = 'success';
-                }
-                
-                // Extract label (everything before the colon, which includes weightage)
-                const label = colonIndex !== -1 ? indicator.substring(0, colonIndex).trim() : indicator.trim();
-                
-                // Determine if this should be larger (SightEngine AI Generated 60% is the main one)
-                const isLarge = label.toLowerCase().includes('sightengine') && label.includes('60%');
-                
-                item.className = `indicator-item ${itemClass}`;
-                if (isLarge) {
-                    item.style.cssText = 'margin-bottom: 20px; transform: scale(1.1);';
-                }
-                item.innerHTML = this.createCircularProgress(confidence, itemClass, label, isLarge);
-                indicatorsList.appendChild(item);
-            });
-        }
+            // Extract label (everything before the colon, which includes weightage)
+            const label = colonIndex !== -1 ? indicator.substring(0, colonIndex).trim() : indicator.trim();
+            
+            // Determine if this is a 60% weightage indicator (should be slightly more prominent)
+            const isPrimary = label.includes('60%');
+            
+            // Apply consistent styling to all indicators
+            item.className = `indicator-item ${itemClass}`;
+            item.style.cssText = 'margin-bottom: 24px; display: flex; flex-direction: column; align-items: center;';
+            
+            item.innerHTML = this.createCircularProgress(confidence, itemClass, label, isPrimary);
+            indicatorsList.appendChild(item);
+        });
     }
     
-    createCircularProgress(percentage, type, label, isLarge = false) {
-        // Make Gemini indicators larger (60% weightage)
-        const radius = isLarge ? 50 : 40;
-        const svgSize = isLarge ? 120 : 100;
-        const fontSize = isLarge ? '18px' : '14px';
-        const labelSize = isLarge ? '16px' : '14px';
+    createCircularProgress(percentage, type, label, isPrimary = false) {
+        // Consistent sizing - primary (60% weightage) indicators slightly larger
+        const radius = isPrimary ? 45 : 40;
+        const svgSize = isPrimary ? 110 : 100;
+        const fontSize = isPrimary ? '16px' : '14px';
+        const labelSize = '14px';
+        const labelWeight = isPrimary ? 'bold' : 'normal';
         const circumference = 2 * Math.PI * radius;
         const offset = circumference - (percentage / 100) * circumference;
         const center = svgSize / 2;
         
+        // Consistent color scheme
+        const labelColor = isPrimary ? '#0066cc' : '#333333';
+        
         return `
-            <div class="circular-progress" style="${isLarge ? 'margin-bottom: 10px;' : ''}">
+            <div class="circular-progress" style="margin-bottom: 12px;">
                 <svg width="${svgSize}" height="${svgSize}">
-                    <circle class="circular-progress-bg" cx="${center}" cy="${center}" r="${radius}"></circle>
+                    <circle class="circular-progress-bg" cx="${center}" cy="${center}" r="${radius}" stroke-width="3"></circle>
                     <circle class="circular-progress-bar ${type}" 
                             cx="${center}" cy="${center}" r="${radius}"
                             stroke-dasharray="${circumference}"
                             stroke-dashoffset="${offset}"
-                            ${isLarge ? 'stroke-width="4"' : ''}>
+                            stroke-width="3">
                     </circle>
                 </svg>
-                <div class="circular-progress-text" style="font-size: ${fontSize}; font-weight: ${isLarge ? 'bold' : 'normal'};">${percentage}%</div>
+                <div class="circular-progress-text" style="font-size: ${fontSize}; font-weight: ${labelWeight}; color: #333;">${percentage}%</div>
             </div>
-            <div class="indicator-label" style="font-size: ${labelSize}; font-weight: ${isLarge ? 'bold' : 'normal'}; ${isLarge ? 'color: #0066cc;' : ''}">${label}</div>
+            <div class="indicator-label" style="font-size: ${labelSize}; font-weight: ${labelWeight}; color: ${labelColor}; text-align: center; max-width: 200px; line-height: 1.4;">${label}</div>
         `;
     }
     
