@@ -1824,8 +1824,8 @@ class DeepfakeScanner {
         const offset = circumference - (percentage / 100) * circumference;
         const center = svgSize / 2;
         
-        // Consistent color scheme
-        const labelColor = isPrimary ? '#0066cc' : '#333333';
+        // All text in white
+        const textColor = '#ffffff';
         
         return `
             <div class="circular-progress" style="margin-bottom: 12px;">
@@ -1838,9 +1838,9 @@ class DeepfakeScanner {
                             stroke-width="3">
                     </circle>
                 </svg>
-                <div class="circular-progress-text" style="font-size: ${fontSize}; font-weight: ${labelWeight}; color: #333;">${percentage}%</div>
+                <div class="circular-progress-text" style="font-size: ${fontSize}; font-weight: ${labelWeight}; color: ${textColor};">${percentage}%</div>
             </div>
-            <div class="indicator-label" style="font-size: ${labelSize}; font-weight: ${labelWeight}; color: ${labelColor}; text-align: center; max-width: 200px; line-height: 1.4;">${label}</div>
+            <div class="indicator-label" style="font-size: ${labelSize}; font-weight: ${labelWeight}; color: ${textColor}; text-align: center; max-width: 200px; line-height: 1.4;">${label}</div>
         `;
     }
     
