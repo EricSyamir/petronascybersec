@@ -982,7 +982,13 @@ class DeepfakeScanner {
             const { file, isImage, sightEngineResult, mlResult, elaResult } = this.pendingAnalysis;
             
             // Combine results based on face selection
+            console.log('🔄 Combining results - hasFaces:', this.hasFaces, 'mlResult:', mlResult);
             const combinedResult = this.combineResults(sightEngineResult.detection, mlResult, isImage);
+            console.log('✅ Combined result structure:', {
+                hasAnalysis: !!combinedResult.analysis,
+                hasIndicators: !!(combinedResult.analysis && combinedResult.analysis.indicators),
+                indicators: combinedResult.analysis?.indicators
+            });
             
             // Add ELA result (doesn't affect AI detection weightage, just for display)
             combinedResult.ela_result = elaResult;
@@ -990,7 +996,8 @@ class DeepfakeScanner {
             this.setProgress(100, 'Analysis complete!');
             setTimeout(() => {
                 this.showProgress(false);
-                console.log('Combined result:', combinedResult);
+                console.log('📊 Final combined result before display:', combinedResult);
+                console.log('📊 Indicators to display:', combinedResult.analysis?.indicators);
                 this.displayResults(combinedResult, file);
                 this.pendingAnalysis = null;
             }, 1000);
@@ -1747,16 +1754,11 @@ class DeepfakeScanner {
         const indicatorsList = document.getElementById('indicatorsList');
         indicatorsList.innerHTML = '';
         
-        // Filter out deepfake-related indicators if no face button was selected
-        let filteredIndicators = indicators;
-        if (this.hasFaces === false || this.hasFaces === null) {
-            filteredIndicators = indicators.filter(indicator => {
-                const lowerIndicator = indicator.toLowerCase();
-                return !lowerIndicator.includes('deepfake');
-            });
-        }
+        console.log('📋 updateIndicatorsList called with:', indicators);
+        console.log('📋 Indicators type:', typeof indicators, 'Is array:', Array.isArray(indicators));
         
-        if (filteredIndicators.length === 0) {
+        if (!indicators || indicators.length === 0) {
+            console.warn('⚠️ No indicators provided to updateIndicatorsList');
             const item = document.createElement('div');
             item.className = 'indicator-item success';
             item.innerHTML = '<span>✓</span> <span>No suspicious indicators found</span>';
@@ -1764,67 +1766,114 @@ class DeepfakeScanner {
             return;
         }
         
-        // Separate Gemini (60%) and Sightengine (40%) indicators - only show the 2 main scores
-        const geminiIndicators = [];
-        const sightengineIndicators = [];
+        // Check if this is a video (has Gemini/transcript indicators) or image
+        const hasVideoIndicators = indicators.some(ind => 
+            ind.toLowerCase().includes('gemini') || ind.toLowerCase().includes('transcript')
+        );
         
-        filteredIndicators.forEach(indicator => {
-            if (indicator.toLowerCase().includes('gemini') || indicator.toLowerCase().includes('transcript')) {
-                geminiIndicators.push(indicator);
-            } else if (indicator.toLowerCase().includes('sightengine') || indicator.toLowerCase().includes('visual')) {
-                sightengineIndicators.push(indicator);
-            }
-        });
+        console.log('📋 Has video indicators:', hasVideoIndicators);
         
-        // Display Gemini indicator first (60% weightage) with larger size
-        geminiIndicators.forEach(indicator => {
-            const item = document.createElement('div');
+        if (hasVideoIndicators) {
+            // VIDEO: Separate Gemini (60%) and Sightengine (40%) indicators
+            const geminiIndicators = [];
+            const sightengineIndicators = [];
             
-            // Extract confidence percentage from indicator text (the actual score, not weightage)
-            const confidenceMatch = indicator.match(/(\d+\.?\d*)%/);
-            const confidence = confidenceMatch ? parseFloat(confidenceMatch[1]) : 0;
+            indicators.forEach(indicator => {
+                if (indicator.toLowerCase().includes('gemini') || indicator.toLowerCase().includes('transcript')) {
+                    geminiIndicators.push(indicator);
+                } else if (indicator.toLowerCase().includes('sightengine') || indicator.toLowerCase().includes('visual')) {
+                    sightengineIndicators.push(indicator);
+                }
+            });
             
-            // Determine class based on confidence score
-            let itemClass = 'warning';
-            if (confidence > 70) {
-                itemClass = 'danger';
-            } else if (confidence < 30) {
-                itemClass = 'success';
-            }
+            // Display Gemini indicator first (60% weightage) with larger size
+            geminiIndicators.forEach(indicator => {
+                const item = document.createElement('div');
+                
+                // Extract confidence percentage from indicator text (the actual score, not weightage)
+                const confidenceMatch = indicator.match(/(\d+\.?\d*)%/);
+                const confidence = confidenceMatch ? parseFloat(confidenceMatch[1]) : 0;
+                
+                // Determine class based on confidence score
+                let itemClass = 'warning';
+                if (confidence > 70) {
+                    itemClass = 'danger';
+                } else if (confidence < 30) {
+                    itemClass = 'success';
+                }
+                
+                // Extract label (keep the weightage info)
+                const label = indicator.replace(/\s*:\s*\d+\.?\d*%/, '').trim();
+                
+                // Make Gemini indicators larger and more prominent (60% weightage)
+                item.className = `indicator-item ${itemClass}`;
+                item.style.cssText = 'margin-bottom: 20px; transform: scale(1.15);';
+                item.innerHTML = this.createCircularProgress(confidence, itemClass, label, true); // Pass true for larger size
+                indicatorsList.appendChild(item);
+            });
             
-            // Extract label (keep the weightage info)
-            const label = indicator.replace(/\s*:\s*\d+\.?\d*%/, '').trim();
+            // Display Sightengine indicator (40% weightage) with normal size
+            sightengineIndicators.forEach(indicator => {
+                const item = document.createElement('div');
+                
+                // Extract confidence percentage from indicator text (the actual score, not weightage)
+                const confidenceMatch = indicator.match(/(\d+\.?\d*)%/);
+                const confidence = confidenceMatch ? parseFloat(confidenceMatch[1]) : 0;
+                
+                // Determine class based on confidence score
+                let itemClass = 'warning';
+                if (confidence > 70) {
+                    itemClass = 'danger';
+                } else if (confidence < 30) {
+                    itemClass = 'success';
+                }
+                
+                // Extract label (keep the weightage info)
+                const label = indicator.replace(/\s*:\s*\d+\.?\d*%/, '').trim();
+                
+                item.className = `indicator-item ${itemClass}`;
+                item.innerHTML = this.createCircularProgress(confidence, itemClass, label, false);
+                indicatorsList.appendChild(item);
+            });
+        } else {
+            // IMAGE: Display all indicators with their weightages
+            // For images with faces: 60% SightEngine AI Generated, 20% ML, 20% Deepfake
+            // For images without faces: 60% SightEngine AI Generated, 40% ML
             
-            // Make Gemini indicators larger and more prominent (60% weightage)
-            item.className = `indicator-item ${itemClass}`;
-            item.style.cssText = 'margin-bottom: 20px; transform: scale(1.15);';
-            item.innerHTML = this.createCircularProgress(confidence, itemClass, label, true); // Pass true for larger size
-            indicatorsList.appendChild(item);
-        });
-        
-        // Display Sightengine indicator (40% weightage) with normal size
-        sightengineIndicators.forEach(indicator => {
-            const item = document.createElement('div');
-            
-            // Extract confidence percentage from indicator text (the actual score, not weightage)
-            const confidenceMatch = indicator.match(/(\d+\.?\d*)%/);
-            const confidence = confidenceMatch ? parseFloat(confidenceMatch[1]) : 0;
-            
-            // Determine class based on confidence score
-            let itemClass = 'warning';
-            if (confidence > 70) {
-                itemClass = 'danger';
-            } else if (confidence < 30) {
-                itemClass = 'success';
-            }
-            
-            // Extract label (keep the weightage info)
-            const label = indicator.replace(/\s*:\s*\d+\.?\d*%/, '').trim();
-            
-            item.className = `indicator-item ${itemClass}`;
-            item.innerHTML = this.createCircularProgress(confidence, itemClass, label, false);
-            indicatorsList.appendChild(item);
-        });
+            indicators.forEach(indicator => {
+                const item = document.createElement('div');
+                
+                // Extract confidence percentage from indicator text (the percentage AFTER the colon)
+                // Format: "Label (weightage%): confidence%"
+                const colonIndex = indicator.indexOf(':');
+                let confidence = 0;
+                if (colonIndex !== -1) {
+                    const confidenceMatch = indicator.substring(colonIndex + 1).match(/(\d+\.?\d*)%/);
+                    confidence = confidenceMatch ? parseFloat(confidenceMatch[1]) : 0;
+                }
+                
+                // Determine class based on confidence score
+                let itemClass = 'warning';
+                if (confidence > 70) {
+                    itemClass = 'danger';
+                } else if (confidence < 30) {
+                    itemClass = 'success';
+                }
+                
+                // Extract label (everything before the colon, which includes weightage)
+                const label = colonIndex !== -1 ? indicator.substring(0, colonIndex).trim() : indicator.trim();
+                
+                // Determine if this should be larger (SightEngine AI Generated 60% is the main one)
+                const isLarge = label.toLowerCase().includes('sightengine') && label.includes('60%');
+                
+                item.className = `indicator-item ${itemClass}`;
+                if (isLarge) {
+                    item.style.cssText = 'margin-bottom: 20px; transform: scale(1.1);';
+                }
+                item.innerHTML = this.createCircularProgress(confidence, itemClass, label, isLarge);
+                indicatorsList.appendChild(item);
+            });
+        }
     }
     
     createCircularProgress(percentage, type, label, isLarge = false) {
@@ -2429,43 +2478,51 @@ class DeepfakeScanner {
         const mlLabel = mlResult?.label || 0; // 0 = human, 1 = AI
         const mlConfidence = mlResult?.confidence || 0;
         
+        console.log('📊 ML Result data:', {
+            hasMlResult: !!mlResult,
+            mlSuccess: mlResult?.success,
+            mlAIScore: mlAIScore,
+            mlConfidence: mlConfidence,
+            mlProbabilities: mlProbabilities
+        });
+        
         // Determine weightage based on face selection
         let combinedAIScore, combinedConfidence, method, weightage;
         
         if (this.hasFaces === true) {
-            // IMAGE WITH FACES: 20% Deepfake + 60% SightEngine + 20% ML
-            if (mlResult && mlResult.success) {
-                combinedAIScore = (seDeepfakeScore * 0.2) + (seAIScore * 0.6) + (mlAIScore * 0.2);
+            // IMAGE WITH FACES: 60% SightEngine AI Generated + 20% ML + 20% Deepfake
+            if (mlResult && (mlResult.success !== false)) {
+                combinedAIScore = (seAIScore * 0.6) + (mlAIScore * 0.2) + (seDeepfakeScore * 0.2);
                 method = 'combined_with_deepfake';
-                weightage = '20% Deepfake + 60% SightEngine + 20% ML';
+                weightage = '60% SightEngine AI Generated + 20% ML + 20% Deepfake';
             } else {
-                // If ML not available, use 25% Deepfake + 75% SightEngine
-                combinedAIScore = (seDeepfakeScore * 0.25) + (seAIScore * 0.75);
+                // If ML not available, use 75% SightEngine AI Generated + 25% Deepfake
+                combinedAIScore = (seAIScore * 0.75) + (seDeepfakeScore * 0.25);
                 method = 'deepfake_sightengine';
-                weightage = '25% Deepfake + 75% SightEngine';
+                weightage = '75% SightEngine AI Generated + 25% Deepfake';
             }
         } else if (this.hasFaces === false) {
-            // IMAGE WITHOUT FACES: 60% SightEngine + 40% ML (no deepfake)
-            if (mlResult && mlResult.success) {
+            // IMAGE WITHOUT FACES: 60% SightEngine AI Generated + 40% ML (no deepfake)
+            if (mlResult && (mlResult.success !== false)) {
                 combinedAIScore = (seAIScore * 0.6) + (mlAIScore * 0.4);
                 method = 'sightengine_ml';
-                weightage = '60% SightEngine + 40% ML';
+                weightage = '60% SightEngine AI Generated + 40% ML';
             } else {
                 // If ML not available, use 100% SightEngine
                 combinedAIScore = seAIScore;
                 method = 'sightengine_only';
-                weightage = '100% SightEngine';
+                weightage = '100% SightEngine AI Generated';
             }
         } else {
             // Fallback: 60% SightEngine + 40% ML (if available)
-            if (mlResult && mlResult.success) {
+            if (mlResult && (mlResult.success !== false)) {
                 combinedAIScore = (seAIScore * 0.6) + (mlAIScore * 0.4);
                 method = 'sightengine_ml';
-                weightage = '60% SightEngine + 40% ML';
+                weightage = '60% SightEngine AI Generated + 40% ML';
             } else {
                 combinedAIScore = seAIScore;
                 method = 'sightengine_only';
-                weightage = '100% SightEngine';
+                weightage = '100% SightEngine AI Generated';
             }
         }
         
@@ -2485,14 +2542,18 @@ class DeepfakeScanner {
         combined.analysis.has_faces = this.hasFaces;
         
         // Add ML-specific data (preserve all fields from ML result including raw_outputs)
-        combined.ml_result = {
-            success: mlResult.success !== undefined ? mlResult.success : true,
-            label: mlLabel,
-            label_name: mlResult.label_name || (mlLabel === 1 ? 'AI-generated' : 'Human-generated'),
-            confidence: mlConfidence,
-            probabilities: mlProbabilities,
-            raw_outputs: mlResult.raw_outputs || {}
-        };
+        if (mlResult) {
+            combined.ml_result = {
+                success: mlResult.success !== undefined ? mlResult.success : true,
+                label: mlLabel,
+                label_name: mlResult.label_name || (mlLabel === 1 ? 'AI-generated' : 'Human-generated'),
+                confidence: mlConfidence,
+                probabilities: mlProbabilities,
+                raw_outputs: mlResult.raw_outputs || {}
+            };
+        } else {
+            combined.ml_result = null;
+        }
         
         // Add SightEngine-specific data
         combined.sightengine_result = {
@@ -2503,12 +2564,43 @@ class DeepfakeScanner {
             is_deepfake: seAnalysis.is_deepfake || false
         };
         
-        // Update indicators to include ML information
-        const indicators = combined.analysis.indicators || [];
-        if (mlResult.success) {
-            indicators.push(`ML Model: ${mlResult.label_name} (${Math.round(mlConfidence * 100)}% confidence)`);
+        // Update indicators with proper weightage breakdown for images
+        const indicators = [];
+        
+        console.log('🔍 Setting indicators - hasFaces:', this.hasFaces, 'mlResult:', mlResult);
+        
+        if (this.hasFaces === true) {
+            // IMAGE WITH FACES: 60% SightEngine AI Generated + 20% ML + 20% Deepfake
+            if (mlResult && (mlResult.success !== false)) {
+                indicators.push(`SightEngine AI Generated model (60%): ${(seAIScore * 100).toFixed(1)}%`);
+                indicators.push(`ML Model analysis (20%): ${(mlAIScore * 100).toFixed(1)}%`);
+                indicators.push(`SightEngine Deepfake detection (20%): ${(seDeepfakeScore * 100).toFixed(1)}%`);
+            } else {
+                // If ML not available, adjust weightage
+                indicators.push(`SightEngine AI Generated model (75%): ${(seAIScore * 100).toFixed(1)}%`);
+                indicators.push(`SightEngine Deepfake detection (25%): ${(seDeepfakeScore * 100).toFixed(1)}%`);
+            }
+        } else if (this.hasFaces === false) {
+            // IMAGE WITHOUT FACES: 60% SightEngine AI Generated + 40% ML (NO deepfake)
+            if (mlResult && (mlResult.success !== false)) {
+                indicators.push(`SightEngine AI Generated model (60%): ${(seAIScore * 100).toFixed(1)}%`);
+                indicators.push(`ML Model analysis (40%): ${(mlAIScore * 100).toFixed(1)}%`);
+            } else {
+                indicators.push(`SightEngine AI Generated model: ${(seAIScore * 100).toFixed(1)}%`);
+            }
+        } else {
+            // Fallback: 60% SightEngine + 40% ML
+            if (mlResult && (mlResult.success !== false)) {
+                indicators.push(`SightEngine AI Generated model (60%): ${(seAIScore * 100).toFixed(1)}%`);
+                indicators.push(`ML Model analysis (40%): ${(mlAIScore * 100).toFixed(1)}%`);
+            } else {
+                indicators.push(`SightEngine AI Generated model: ${(seAIScore * 100).toFixed(1)}%`);
+            }
         }
+        
+        console.log('✅ Generated indicators:', indicators);
         combined.analysis.indicators = indicators;
+        console.log('✅ Set combined.analysis.indicators:', combined.analysis.indicators);
         
         return combined;
     }

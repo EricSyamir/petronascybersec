@@ -10,8 +10,8 @@ define('MAX_UPLOAD_SIZE', 50 * 1024 * 1024); // 50MB
 
 // Sightengine API Configuration (KEPT - External API)
 // Use environment variables if available (for Render/cloud deployment), otherwise use defaults
-define('SIGHTENGINE_API_USER', getenv('SIGHTENGINE_API_USER') ?: '1931720966');
-define('SIGHTENGINE_API_SECRET', getenv('SIGHTENGINE_API_SECRET') ?: 'Ey7EbcJMjAtQZDiD38xLtyXvJrqpCVmw');
+define('SIGHTENGINE_API_USER', getenv('SIGHTENGINE_API_USER') ?: '1235785880');
+define('SIGHTENGINE_API_SECRET', getenv('SIGHTENGINE_API_SECRET') ?: 'CuyrbiTjPo7VPSkY69SkTLFJQVgZJNHx');
 define('SIGHTENGINE_API_URL', 'https://api.sightengine.com/1.0/check.json');
 
 // OSINT Configuration
