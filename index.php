@@ -67,27 +67,6 @@ $baseUrl = $protocol . '://' . $host . $basePath;
             </div>
         </section>
 
-        <section class="quick-stats">
-            <div class="stats-container">
-                <div class="stat-card">
-                    <h3 id="total-scammers"><?php echo getTotalScammers(); ?></h3>
-                    <p>Known Scammers</p>
-                </div>
-                <div class="stat-card">
-                    <h3 id="verified-scammers"><?php echo getVerifiedScammers(); ?></h3>
-                    <p>Verified Reports</p>
-                </div>
-                <div class="stat-card">
-                    <h3 id="total-reports"><?php echo getTotalReports(); ?></h3>
-                    <p><?php echo $translations['total_reports']; ?></p>
-                </div>
-                <div class="stat-card">
-                    <h3 id="deepfakes-detected"><?php echo getDeepfakesDetected(); ?></h3>
-                    <p><?php echo $translations['deepfakes_detected']; ?></p>
-                </div>
-            </div>
-        </section>
-
         <section class="external-links">
             <div class="links-container">
                 <div class="link-card">
