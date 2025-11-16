@@ -2766,16 +2766,6 @@ class DeepfakeScanner {
                     <h4>${suspicious ? '⚠️ Suspicious' : '✓ Normal'}</h4>
                     <span class="ela-confidence">Confidence: ${confidenceScore.toFixed(1)}%</span>
                 </div>
-                ${suspicious ? `
-                    <div class="ela-warning">
-                        <p><strong>⚠️ WARNING:</strong> This image shows signs of tampering!</p>
-                        <p>Indicator: ${suspiciousPercentage.toFixed(2)}% of pixels show suspicious error levels</p>
-                    </div>
-                ` : `
-                    <div class="ela-success">
-                        <p>✓ Image appears to be authentic (no significant tampering detected)</p>
-                    </div>
-                `}
             </div>
         `;
         
