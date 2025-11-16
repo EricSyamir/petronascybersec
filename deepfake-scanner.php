@@ -24,7 +24,7 @@ $baseUrl = $protocol . '://' . $host . $basePath;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $translations['deepfake_scanner']; ?> - PETRONAS Cybercrime Platform</title>
+    <title><?php echo $translations['deepfake_scanner']; ?> - VeriDeep</title>
     <link rel="stylesheet" href="assets/css/petronas-master.css">
     <link rel="icon" type="image/svg+xml" href="<?php echo $baseUrl; ?>/assets/images/shield-icon.svg">
     <link rel="icon" type="image/x-icon" href="<?php echo $baseUrl; ?>/assets/images/shield-icon.svg">

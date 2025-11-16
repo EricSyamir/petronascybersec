@@ -250,7 +250,7 @@ function sendPriorityNotification($reportId, $priority) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $translations['report_incident']; ?> - PETRONAS Cybercrime Platform</title>
+    <title><?php echo $translations['report_incident']; ?> - VeriDeep</title>
     <link rel="stylesheet" href="assets/css/petronas-master.css">
     <link rel="icon" type="image/svg+xml" href="<?php echo $baseUrl; ?>/assets/images/shield-icon.svg">
     <link rel="icon" type="image/x-icon" href="<?php echo $baseUrl; ?>/assets/images/shield-icon.svg">
