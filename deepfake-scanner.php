@@ -37,7 +37,7 @@ $baseUrl = $protocol . '://' . $host . $basePath;
             <div class="nav-container">
                 <div class="logo">
                     <img src="<?php echo $baseUrl; ?>/petronas.png" alt="PETRONAS" class="logo-img" onerror="this.src='<?php echo $baseUrl; ?>/assets/images/shield-icon.svg'; this.onerror=null;">
-                    <span class="platform-name"><?php echo $translations['platform_title']; ?></span>
+                    <span class="platform-name">VeriDeep</span>
                 </div>
                 <div class="nav-links">
                     <a href="index.php" class="nav-link">Home</a>

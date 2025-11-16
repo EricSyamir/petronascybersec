@@ -25,7 +25,7 @@ $baseUrl = $protocol . '://' . $host . $basePath;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $translations['platform_title']; ?> - VeriDeep</title>
+    <title>Home - VeriDeep</title>
     <link rel="stylesheet" href="assets/css/petronas-master.css">
     <link rel="icon" type="image/svg+xml" href="<?php echo $baseUrl; ?>/assets/images/shield-icon.svg">
     <link rel="icon" type="image/x-icon" href="<?php echo $baseUrl; ?>/assets/images/shield-icon.svg">
@@ -38,7 +38,7 @@ $baseUrl = $protocol . '://' . $host . $basePath;
             <div class="nav-container">
                 <div class="logo">
                     <img src="<?php echo $baseUrl; ?>/petronas.png" alt="PETRONAS" class="logo-img" onerror="this.src='<?php echo $baseUrl; ?>/assets/images/shield-icon.svg'; this.onerror=null;">
-                    <span class="platform-name"><?php echo $translations['platform_title']; ?></span>
+                    <span class="platform-name">VeriDeep</span>
                 </div>
                 <div class="nav-links">
                     <a href="deepfake-scanner.php" class="nav-link"><?php echo $translations['deepfake_scanner']; ?></a>
